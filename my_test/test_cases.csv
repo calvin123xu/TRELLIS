@@ -1,0 +1,8 @@
+CaseID,Level,StructureType,Modality,Prompt,ImagePath
+L1_S1_vase,L1,Symmetry,M1,"a perfectly symmetric ceramic vase with smooth surface, centered, no decorations",
+L1_S2_wirecube,L1,Thin,M1,"a thin metal wireframe cube with very slender edges, minimal structure",
+L1_S4_hollowsphere,L1,Hollow,M1,"a hollow sphere with a visible hole, thin shell structure, empty inside",
+L2_S2_thinchair,L2,Thin,M1,"a chair with extremely thin and fragile legs, minimal support structure",
+L3_S2_bicycle,L3,Thin,M1,"a bicycle with thin metal spokes, detailed frame, and visible wheel structure",
+L3_S3_hand,L3,Articulated,M1,"a human hand with fingers spread apart, clear separation between each finger",
+L3_S2_spider,L3,Thin,M1,"a spider with long thin legs, each leg clearly separated and articulated",
