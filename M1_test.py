@@ -12,7 +12,7 @@ from trellis.utils import render_utils, postprocessing_utils
 # -----------------------------
 # Config
 # -----------------------------
-CSV_PATH = "test_cases.csv"
+CSV_PATH = os.path.abspath("my_test/test_cases.csv")
 OUTPUT_ROOT = os.path.abspath("my_test/text_m1/outputs")
 RUN_LOG_PATH = os.path.join(OUTPUT_ROOT, "run_log.csv")
 SEEDS = [0, 1, 2]
