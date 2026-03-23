@@ -39,9 +39,14 @@ def _render(file_path, sha256, output_dir, num_views):
     fov = [40 / 180 * np.pi] * num_views
     views = [{'yaw': y, 'pitch': p, 'radius': r, 'fov': f} for y, p, r, f in zip(yaws, pitchs, radius, fov)]
     
-    if not os.path.isabs(file_path):
-        file_path = os.path.join(opt.output_dir, file_path)
-    file_path = os.path.abspath(os.path.expanduser(file_path))
+    file_path = os.path.expanduser(file_path)
+    
+    if not os.path.isabs(file_path) and not os.path.exists(file_path):
+        candidate = os.path.join(opt.output_dir, file_path)
+        if os.path.exists(candidate):
+            file_path = candidate
+    
+    file_path = os.path.abspath(file_path)
     
     args = [
         BLENDER_PATH, '-b', '-P', os.path.join(os.path.dirname(__file__), 'blender_script', 'render.py'),
