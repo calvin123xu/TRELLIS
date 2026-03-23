@@ -39,11 +39,15 @@ def _render(file_path, sha256, output_dir, num_views):
     fov = [40 / 180 * np.pi] * num_views
     views = [{'yaw': y, 'pitch': p, 'radius': r, 'fov': f} for y, p, r, f in zip(yaws, pitchs, radius, fov)]
     
+    if not os.path.isabs(file_path):
+        file_path = os.path.join(opt.output_dir, file_path)
+    file_path = os.path.abspath(os.path.expanduser(file_path))
+    
     args = [
         BLENDER_PATH, '-b', '-P', os.path.join(os.path.dirname(__file__), 'blender_script', 'render.py'),
         '--',
         '--views', json.dumps(views),
-        '--object', os.path.expanduser(file_path),
+        '--object', file_path,
         '--resolution', '512',
         '--output_folder', output_folder,
         '--engine', 'CYCLES',
@@ -52,7 +56,7 @@ def _render(file_path, sha256, output_dir, num_views):
     if file_path.endswith('.blend'):
         args.insert(1, file_path)
     
-    call(args, stdout=DEVNULL, stderr=DEVNULL)
+    call(args)
     
     if os.path.exists(os.path.join(output_folder, 'transforms.json')):
         return {'sha256': sha256, 'rendered': True}
