@@ -1,4 +1,7 @@
 import os
+os.environ["ATTN_BACKEND"] = "xformers"
+os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
+os.environ["SPCONV_ALGO"] = "native"
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import copy
@@ -14,9 +17,6 @@ from queue import Queue
 
 import trellis.models as models
 import trellis.modules.sparse as sp
-
-os.environ["ATTN_BACKEND"] = "xformers"
-os.environ["SPCONV_ALGO"] = "native"
 
 torch.set_grad_enabled(False)
 
