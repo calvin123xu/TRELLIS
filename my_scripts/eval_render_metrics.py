@@ -1,4 +1,4 @@
-import os
+import os, sys
 os.environ["ATTN_BACKEND"] = "xformers"
 os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
 os.environ["SPCONV_ALGO"] = "native"
