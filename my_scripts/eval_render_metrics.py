@@ -1,4 +1,7 @@
 import os
+os.environ["ATTN_BACKEND"] = "xformers"
+os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
+os.environ["SPCONV_ALGO"] = "native"
 import json
 import argparse
 import numpy as np
