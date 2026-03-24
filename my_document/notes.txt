@@ -21,3 +21,10 @@ conda activate /speed-scratch/qiaoyu/env/trellis
   1. python dataset_toolkits/encode_latent.py --output_dir datasets/Toys4k_small
   
   2.python my_scripts/decode_latents_to_gaussian.py --output_dir datasets/Toys4k_small
+
+///3d representation evaluation
+python my_scripts/eval_render_metrics.py \
+  --output_dir datasets/Toys4k_small \
+  --gauss_dir datasets/Toys4k_small/gaussians_decoded \
+  --resolution 512 \
+  --bg 0,0,0
