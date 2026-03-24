@@ -15,6 +15,8 @@ from queue import Queue
 import trellis.models as models
 import trellis.modules.sparse as sp
 
+os.environ["ATTN_BACKEND"] = "xformers"
+os.environ["SPCONV_ALGO"] = "native"
 
 torch.set_grad_enabled(False)
 
