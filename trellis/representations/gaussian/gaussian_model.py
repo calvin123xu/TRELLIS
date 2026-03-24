@@ -183,9 +183,15 @@ class Gaussian:
         if transform is not None:
             transform = np.array(transform)
             xyz = np.matmul(xyz, transform)
-            rotation = utils3d.numpy.quaternion_to_matrix(rotation)
-            rotation = np.matmul(rotation, transform)
-            rotation = utils3d.numpy.matrix_to_quaternion(rotation)
+            # original
+            # rotation = utils3d.numpy.quaternion_to_matrix(rotation)
+            # rotation = np.matmul(rotation, transform)
+            # rotation = utils3d.numpy.matrix_to_quaternion(rotation)
+
+            #to fix UnboundLocalError: local variable 'rotation' referenced before assignment
+            rots = utils3d.numpy.quaternion_to_matrix(rots)
+            rots = np.matmul(rots, transform)
+            rots = utils3d.numpy.matrix_to_quaternion(rots)
             
         # convert to actual gaussian attributes
         xyz = torch.tensor(xyz, dtype=torch.float, device=self.device)
