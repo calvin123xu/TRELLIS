@@ -79,7 +79,8 @@ def to_lpips_tensor(x):  # x: [H,W,3], [0,1]
     return t * 2.0 - 1.0
 
 
-def eval_one_object(sha, output_dir, gauss_dir, resolution=512, bg=(0,0,0)):
+# def eval_one_object(sha, output_dir, gauss_dir, resolution=512, bg=(0,0,0)):
+def eval_one_object(sha, output_dir, gauss_dir, lpips_fn, resolution=512, bg=(0,0,0)):
     gt_dir = os.path.join(output_dir, "renders", sha)
     transforms_json = os.path.join(gt_dir, "transforms.json")
     ply_path = os.path.join(gauss_dir, f"{sha}.ply")
@@ -91,7 +92,7 @@ def eval_one_object(sha, output_dir, gauss_dir, resolution=512, bg=(0,0,0)):
         ply_path, transforms_json, resolution=resolution, bg=bg
     )
 
-    lpips_fn = lpips.LPIPS(net="alex").cuda().eval()
+    # lpips_fn = lpips.LPIPS(net="alex").cuda().eval()
 
     psnr_list, ssim_list, lpips_list = [], [], []
 
@@ -143,14 +144,36 @@ def main():
     out_csv = args.out_csv or os.path.join(args.output_dir, "render_metrics.csv")
 
     meta = pd.read_csv(os.path.join(args.output_dir, "metadata.csv"))
-    shas = meta["sha256"].astype(str).tolist()
+    # shas = meta["sha256"].astype(str).tolist()
+
+    meta_shas = set(meta["sha256"].astype(str).tolist())
+
+    if not os.path.isdir(gauss_dir):
+        raise FileNotFoundError(f"gauss_dir not found: {gauss_dir}")
+
+    # Only evaluate assets that already have decoded 3D Gaussian (.ply)
+    gauss_shas = [
+        os.path.splitext(f)[0]
+        for f in os.listdir(gauss_dir)
+        if f.endswith(".ply")
+    ]
+    gauss_shas = sorted(set(gauss_shas))
+
+    # Keep only assets that exist in metadata
+    shas = [s for s in gauss_shas if s in meta_shas]
+    print(f"[Eval] metadata assets: {len(meta_shas)}")
+    print(f"[Eval] gaussian assets (.ply): {len(gauss_shas)}")
+    print(f"[Eval] assets to evaluate (intersection): {len(shas)}")
 
     if args.max_items > 0:
         shas = shas[:args.max_items]
 
+    lpips_fn = lpips.LPIPS(net="alex").cuda().eval()
+    
     rows = []
     for sha in tqdm(shas, desc="Evaluating"):
-        r = eval_one_object(sha, args.output_dir, gauss_dir,
+        # r = eval_one_object(sha, args.output_dir, gauss_dir,
+        r = eval_one_object(sha, args.output_dir, gauss_dir, lpips_fn,
                             resolution=args.resolution, bg=bg)
         if r is not None:
             rows.append(r)
