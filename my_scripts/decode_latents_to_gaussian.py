@@ -1,4 +1,7 @@
 import os, sys
+os.environ["ATTN_BACKEND"] = "xformers"
+os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
+os.environ["SPCONV_ALGO"] = "native"
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import argparse
 import numpy as np
@@ -9,7 +12,7 @@ from tqdm import tqdm
 import trellis.models as models
 import trellis.modules.sparse as sp
 
-os.environ["ATTN_BACKEND"] = "xformers"
+
 
 @torch.no_grad()
 def main():
