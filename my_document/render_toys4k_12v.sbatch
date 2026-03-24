@@ -1,13 +1,13 @@
 #!/encs/bin/bash
-#SBATCH --job-name=trellis_toys4k_render_12v
+#SBATCH --job-name=trellis_toys4k_render_20
 #SBATCH --account=weiping
 #SBATCH --partition=pt
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --gpus=1
-#SBATCH --time=10:00:00
+#SBATCH --gpus=1 
+#SBATCH --time=08:00:00
 #SBATCH --output=trellis_render_%j.out
 #SBATCH --error=trellis_render_%j.err
 #SBATCH --mail-type=FAIL
@@ -33,10 +33,26 @@ python --version
 echo "Checking Blender..."
 /speed-scratch/qiaoyu/tools/blender-3.0.1-linux-x64/blender --version
 
-echo "Checking instances..."
+python - <<'PY'
+import pandas as pd
+df = pd.read_csv('datasets/Toys4k_small/metadata.csv')
+df = df[df['local_path'].notna()].reset_index(drop=True)
+ids = df['sha256'].head(20)
+with open('my_20_assets.txt', 'w') as f:
+    for x in ids:
+        f.write(str(x) + '\n')
+print(f"wrote {len(ids)} ids to my_20_assets.txt")
+print(ids.tolist()[:5])
+PY
+
 wc -l my_20_assets.txt
 head -5 my_20_assets.txt || true
 
+if [ -d datasets/Toys4k_small/renders ]; then
+    mv datasets/Toys4k_small/renders datasets/Toys4k_small/renders_old_$(date +%Y%m%d_%H%M%S)
+fi
+
+python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
 
 python dataset_toolkits/render.py Toys4k \
   --output_dir datasets/Toys4k_small \
