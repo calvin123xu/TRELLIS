@@ -1,13 +1,16 @@
-跑通第一个数据集从下载到提取特征
-2 3. 4. 5.步之后都要python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
-0. . ./dataset_toolkits/setup.sh
+conda activate /speed-scratch/qiaoyu/env/trellis
 
-1. python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
-
-2. python dataset_toolkits/download.py Toys4k --output_dir datasets/Toys4k_small
-
-3. python dataset_toolkits/render.py Toys4k --output_dir datasets/Toys4k_small
-
-4. python dataset_toolkits/voxelize.py Toys4k --output_dir datasets/Toys4k_small
-
-5. python dataset_toolkits/extract_feature.py --output_dir datasets/Toys4k_small
+////feature extraction pipeline
+  跑通第一个数据集从下载到提取特征
+  2 3. 4. 5.步之后都要python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
+  0. . ./dataset_toolkits/setup.sh
+  
+  1. python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
+  
+  2. python dataset_toolkits/download.py Toys4k --output_dir datasets/Toys4k_small
+  
+  3. python dataset_toolkits/render.py Toys4k --output_dir datasets/Toys4k_small
+  
+  4. python dataset_toolkits/voxelize.py Toys4k --output_dir datasets/Toys4k_small
+  
+  5. python dataset_toolkits/extract_feature.py --output_dir datasets/Toys4k_small
