@@ -9,6 +9,7 @@ from tqdm import tqdm
 import trellis.models as models
 import trellis.modules.sparse as sp
 
+os.environ["ATTN_BACKEND"] = "xformers"
 
 @torch.no_grad()
 def main():
