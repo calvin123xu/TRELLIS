@@ -47,7 +47,7 @@ OUTPUT_DIR="datasets/Toys4k_small"
 
 # ------------------------------------------------------------------
 # EDIT THIS: choose one chunk txt
-INSTANCES_TXT="${OUTPUT_DIR}/render_chunks/unrendered_0000.txt"
+INSTANCES_TXT="${OUTPUT_DIR}/render_chunks/unrendered_0001.txt"
 # ------------------------------------------------------------------
 
 if [ ! -f "${INSTANCES_TXT}" ]; then
