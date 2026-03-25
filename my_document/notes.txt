@@ -9,6 +9,12 @@ conda activate /speed-scratch/qiaoyu/env/trellis
   1. python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
   
   2. python dataset_toolkits/download.py Toys4k --output_dir datasets/Toys4k_small
+
+  2.5 python my_scripts/make_unrendered_chunks.py \
+    --output_dir datasets/Toys4k_small \
+    --chunk_size 64 \
+    --txt_dir datasets/Toys4k_small/render_chunks \
+    --require_local_path
   
   3. python dataset_toolkits/render.py Toys4k --output_dir datasets/Toys4k_small
   
