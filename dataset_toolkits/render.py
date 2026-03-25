@@ -82,6 +82,9 @@ if __name__ == '__main__':
     dataset_utils.add_args(parser)
     parser.add_argument('--rank', type=int, default=0)
     parser.add_argument('--world_size', type=int, default=1)
+    parser.add_argument('--record_tag', type=str, default=None,
+                        help='Suffix tag for rendered record csv filename. '
+                             'If not set, use rank (rendered_<rank>.csv).')
     parser.add_argument('--max_workers', type=int, default=8)
     opt = parser.parse_args(sys.argv[2:])
     opt = edict(vars(opt))
@@ -127,4 +130,6 @@ if __name__ == '__main__':
     func = partial(_render, output_dir=opt.output_dir, num_views=opt.num_views)
     rendered = dataset_utils.foreach_instance(metadata, opt.output_dir, func, max_workers=opt.max_workers, desc='Rendering objects')
     rendered = pd.concat([rendered, pd.DataFrame.from_records(records)])
-    rendered.to_csv(os.path.join(opt.output_dir, f'rendered_{opt.rank}.csv'), index=False)
+    #rendered.to_csv(os.path.join(opt.output_dir, f'rendered_{opt.rank}.csv'), index=False)
+    record_tag = str(opt.rank) if opt.record_tag is None else str(opt.record_tag)
+    rendered.to_csv(os.path.join(opt.output_dir, f'rendered_{record_tag}.csv'), index=False)
