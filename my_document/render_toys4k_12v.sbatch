@@ -48,10 +48,6 @@ PY
 wc -l my_20_assets.txt
 head -5 my_20_assets.txt || true
 
-if [ -d datasets/Toys4k_small/renders ]; then
-    mv datasets/Toys4k_small/renders datasets/Toys4k_small/renders_old_$(date +%Y%m%d_%H%M%S)
-fi
-
 python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
 
 python dataset_toolkits/render.py Toys4k \
