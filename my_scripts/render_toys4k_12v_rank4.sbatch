@@ -20,7 +20,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --gpus=1
-#SBATCH --time=08:00:00
+#SBATCH --time=12:00:00
 #SBATCH --array=0-3
 #SBATCH --output=trellis_render_r4_%A_%a.out
 #SBATCH --error=trellis_render_r4_%A_%a.err
