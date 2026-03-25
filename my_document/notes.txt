@@ -15,6 +15,8 @@ conda activate /speed-scratch/qiaoyu/env/trellis
     --chunk_size 64 \
     --txt_dir datasets/Toys4k_small/render_chunks \
     --require_local_path
+
+    bash -n my_scripts/render_toys4k_12v_one_chunk_parallel_safe.sbatch
   
   3. python dataset_toolkits/render.py Toys4k --output_dir datasets/Toys4k_small
   
