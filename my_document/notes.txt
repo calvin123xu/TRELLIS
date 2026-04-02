@@ -10,7 +10,8 @@ conda activate /speed-scratch/qiaoyu/env/trellis
   
   2. python dataset_toolkits/download.py Toys4k --output_dir datasets/Toys4k_small
 
-  2.5 python my_scripts/make_unrendered_chunks.py \
+  2.5 这一步现在不用了，直接用my_scripts/render_toys4k_12v_rank4.sbatch就可以自动分配并线组
+    python my_scripts/make_unrendered_chunks.py \
     --output_dir datasets/Toys4k_small \
     --chunk_size 64 \
     --txt_dir datasets/Toys4k_small/render_chunks \
