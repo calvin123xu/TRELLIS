@@ -26,7 +26,8 @@ def main():
                         default="microsoft/TRELLIS-image-large/ckpts/slat_dec_gs_swin8_B_64l8gs32_fp16",
                         help="pretrained gaussian decoder")
     parser.add_argument("--save_dir", type=str, default=None,
-                        help="where to save ply files. default: <output_dir>/gaussians_decoded")
+                        help="decoded output directory. If relative, it is resolved under "
+                             "<output_dir>. default: <output_dir>/gaussians_decoded")
     parser.add_argument("--max_items", type=int, default=-1,
                         help="decode at most N items; -1 means all")
     args = parser.parse_args()
@@ -58,19 +59,26 @@ def main():
             raise ValueError(f"Found latent columns {latent_cols}, but no matching folder under {latent_root}")
         latent_model = picked
 
-    latent_col = f"latent_{latent_model}"
-    if latent_col not in metadata.columns:
-        raise ValueError(f"{latent_col} not found in metadata columns.")
-
-    # 2) collect instances from metadata
-    valid = metadata[metadata[latent_col] == True]  # noqa: E712
-    if "sha256" not in valid.columns:
-        raise ValueError("metadata.csv must contain 'sha256' column")
-
-    sha_list = valid["sha256"].astype(str).tolist()
-
-    # keep only existing files
     latent_dir = os.path.join(latent_root, latent_model)
+    if not os.path.isdir(latent_dir):
+        raise FileNotFoundError(f"latent subdir not found: {latent_dir}")
+
+    latent_col = f"latent_{latent_model}"
+    # 2) collect instances; prefer metadata flag if present, with graceful fallbacks
+    if latent_col in metadata.columns:
+        valid = metadata[metadata[latent_col] == True]  # noqa: E712
+        if "sha256" not in valid.columns:
+            raise ValueError("metadata.csv must contain 'sha256' column")
+        sha_list = valid["sha256"].astype(str).tolist()
+    elif "sha256" in metadata.columns:
+        # Custom latent folders may not have a dedicated latent_<name> bookkeeping column.
+        # In that case, decode any existing latent files for metadata rows.
+        sha_list = metadata["sha256"].astype(str).tolist()
+    else:
+        # Final fallback: decode directly from files when metadata bookkeeping is unavailable.
+        sha_list = [os.path.splitext(f)[0] for f in os.listdir(latent_dir) if f.endswith(".npz")]
+
+    # keep only existing files in the chosen latent subdirectory
     sha_list = [s for s in sha_list if os.path.exists(os.path.join(latent_dir, f"{s}.npz"))]
 
     if args.max_items > 0:
@@ -79,7 +87,12 @@ def main():
     if len(sha_list) == 0:
         raise ValueError("No valid latent npz found to decode.")
 
-    save_dir = args.save_dir or os.path.join(args.output_dir, "gaussians_decoded")
+    if args.save_dir is None:
+        save_dir = os.path.join(args.output_dir, "gaussians_decoded")
+    elif os.path.isabs(args.save_dir):
+        save_dir = args.save_dir
+    else:
+        save_dir = os.path.join(args.output_dir, args.save_dir)
     os.makedirs(save_dir, exist_ok=True)
 
     # 3) load Gaussian decoder
