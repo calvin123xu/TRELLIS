@@ -24,7 +24,8 @@ conda activate /speed-scratch/qiaoyu/env/trellis
   
   4. python dataset_toolkits/voxelize.py Toys4k --output_dir datasets/Toys4k_small
   
-  5. python dataset_toolkits/extract_feature.py --output_dir datasets/Toys4k_small
+  5.# 通过dino提取每个view的features,然后valina average aggregate成为每个voxel的3D feature
+    python dataset_toolkits/extract_feature.py --output_dir datasets/Toys4k_small
 
 ///feature to 3d representation
   1. 2. 步之后都要python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
