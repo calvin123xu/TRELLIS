@@ -139,8 +139,8 @@ def load_metadata(opt):
     else:
         if opt.filter_low_aesthetic_score is not None:
             metadata = metadata[metadata['aesthetic_score'] >= opt.filter_low_aesthetic_score]
-        if f'feature_{opt.model}' in metadata.columns:
-            metadata = metadata[metadata[f'feature_{opt.model}'] == False]
+        if f'feature_{opt.output_feature_name}' in metadata.columns:
+            metadata = metadata[metadata[f'feature_{opt.output_feature_name}'] == False]
         metadata = metadata[metadata['voxelized'] == True]
         metadata = metadata[metadata['rendered'] == True]
 
@@ -193,7 +193,7 @@ def process_one_object(opt, sha256):
     aggregated_patchtokens = aggregate_patchtokens(sampled_patchtokens, agg=opt.agg)
     # aggregated_patchtokens: [N, C]
 
-    save_path = os.path.join(opt.output_dir, 'features', opt.model, f'{sha256}.npz')
+    save_path = os.path.join(opt.output_dir, 'features', opt.output_feature_name, f'{sha256}.npz')
     np.savez_compressed(
         save_path,
         indices=indices_u8,
@@ -216,13 +216,18 @@ def main():
     parser.add_argument('--world_size', type=int, default=1)
     parser.add_argument('--agg', type=str, default='mean',
                         help="Aggregation mode. Only 'mean' is currently supported.")
+    parser.add_argument('--output_feature_name', type=str, default=None,
+                        help='Output feature directory name under features/. '
+                             "Default is '<model>_my_reasearch' to avoid overwriting official outputs.")
     opt = parser.parse_args()
     opt = edict(vars(opt))
+    if opt.output_feature_name is None:
+        opt.output_feature_name = f'{opt.model}_my_reasearch'
 
     if opt.agg != 'mean':
         raise ValueError(f"Unsupported --agg '{opt.agg}'. Only 'mean' is implemented in this refactor step.")
 
-    feature_dir = os.path.join(opt.output_dir, 'features', opt.model)
+    feature_dir = os.path.join(opt.output_dir, 'features', opt.output_feature_name)
     os.makedirs(feature_dir, exist_ok=True)
 
     metadata = load_metadata(opt)
@@ -232,7 +237,7 @@ def main():
     sha256s = list(metadata['sha256'].values)
     for sha256 in copy.copy(sha256s):
         if os.path.exists(os.path.join(feature_dir, f'{sha256}.npz')):
-            records.append({'sha256': sha256, f'feature_{opt.model}': True})
+            records.append({'sha256': sha256, f'feature_{opt.output_feature_name}': True})
             sha256s.remove(sha256)
 
     # Preload object references similarly to the old producer/consumer pattern.
@@ -254,14 +259,17 @@ def main():
                 sha256, _, _, _ = load_queue.get()
                 try:
                     process_one_object(opt, sha256)
-                    records.append({'sha256': sha256, f'feature_{opt.model}': True})
+                    records.append({'sha256': sha256, f'feature_{opt.output_feature_name}': True})
                 except Exception as e:
                     print(f'Error processing {sha256}: {e}')
     except Exception as e:
         print(f'Error happened during processing: {e}')
 
     records = pd.DataFrame.from_records(records)
-    records.to_csv(os.path.join(opt.output_dir, f'feature_{opt.model}_{opt.rank}.csv'), index=False)
+    records.to_csv(
+        os.path.join(opt.output_dir, f'feature_{opt.output_feature_name}_{opt.rank}.csv'),
+        index=False,
+    )
 
 
 if __name__ == '__main__':
