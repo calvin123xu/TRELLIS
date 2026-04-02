@@ -29,6 +29,8 @@ if __name__ == '__main__':
                         help='Filter objects with aesthetic score lower than this value')
     parser.add_argument('--feat_model', type=str, default='dinov2_vitl14_reg',
                         help='Feature model')
+    parser.add_argument('--feature_subdir', type=str, default=None,
+                        help='Optional feature subdirectory under output_dir/features. Defaults to feat_model when not set')
     parser.add_argument('--enc_pretrained', type=str, default='microsoft/TRELLIS-image-large/ckpts/slat_enc_swin8_B_64l8_fp16',
                         help='Pretrained encoder model')
     parser.add_argument('--model_root', type=str, default='results',
@@ -37,6 +39,8 @@ if __name__ == '__main__':
                         help='Encoder model. if specified, use this model instead of pretrained model')
     parser.add_argument('--ckpt', type=str, default=None,
                         help='Checkpoint to load')
+    parser.add_argument('--latent_subdir', type=str, default=None,
+                        help='Optional latent subdirectory under output_dir/latents. Defaults to computed latent name when not set')
     parser.add_argument('--instances', type=str, default=None,
                         help='Instances to process')
     parser.add_argument('--rank', type=int, default=0)
@@ -55,8 +59,17 @@ if __name__ == '__main__':
         encoder.load_state_dict(torch.load(ckpt_path), strict=False)
         encoder.eval()
         print(f'Loaded model from {ckpt_path}')
-    
-    os.makedirs(os.path.join(opt.output_dir, 'latents', latent_name), exist_ok=True)
+
+    # Keep default behavior unless user overrides directory tags.
+    feature_tag = opt.feature_subdir if opt.feature_subdir is not None else opt.feat_model
+    latent_tag = opt.latent_subdir if opt.latent_subdir is not None else latent_name
+
+    feature_col = f'feature_{feature_tag}'
+    latent_col = f'latent_{latent_tag}'
+    feature_dir = os.path.join(opt.output_dir, 'features', feature_tag)
+    latent_dir = os.path.join(opt.output_dir, 'latents', latent_tag)
+
+    os.makedirs(latent_dir, exist_ok=True)
 
     # get file list
     if os.path.exists(os.path.join(opt.output_dir, 'metadata.csv')):
@@ -70,9 +83,13 @@ if __name__ == '__main__':
     else:
         if opt.filter_low_aesthetic_score is not None:
             metadata = metadata[metadata['aesthetic_score'] >= opt.filter_low_aesthetic_score]
-        metadata = metadata[metadata[f'feature_{opt.feat_model}'] == True]
-        if f'latent_{latent_name}' in metadata.columns:
-            metadata = metadata[metadata[f'latent_{latent_name}'] == False]
+        if feature_col in metadata.columns:
+            metadata = metadata[metadata[feature_col] == True]
+        else:
+            # Graceful fallback for custom feature tags without metadata columns.
+            metadata = metadata[metadata['sha256'].map(lambda x: os.path.exists(os.path.join(feature_dir, f'{x}.npz')))]
+        if latent_col in metadata.columns:
+            metadata = metadata[metadata[latent_col] == False]
 
     start = len(metadata) * opt.rank // opt.world_size
     end = len(metadata) * (opt.rank + 1) // opt.world_size
@@ -82,8 +99,8 @@ if __name__ == '__main__':
     # filter out objects that are already processed
     sha256s = list(metadata['sha256'].values)
     for sha256 in copy.copy(sha256s):
-        if os.path.exists(os.path.join(opt.output_dir, 'latents', latent_name, f'{sha256}.npz')):
-            records.append({'sha256': sha256, f'latent_{latent_name}': True})
+        if os.path.exists(os.path.join(latent_dir, f'{sha256}.npz')):
+            records.append({'sha256': sha256, latent_col: True})
             sha256s.remove(sha256)
 
     # encode latents
@@ -93,16 +110,16 @@ if __name__ == '__main__':
             ThreadPoolExecutor(max_workers=32) as saver_executor:
             def loader(sha256):
                 try:
-                    feats = np.load(os.path.join(opt.output_dir, 'features', opt.feat_model, f'{sha256}.npz'))
+                    feats = np.load(os.path.join(feature_dir, f'{sha256}.npz'))
                     load_queue.put((sha256, feats))
                 except Exception as e:
                     print(f"Error loading features for {sha256}: {e}")
             loader_executor.map(loader, sha256s)
             
             def saver(sha256, pack):
-                save_path = os.path.join(opt.output_dir, 'latents', latent_name, f'{sha256}.npz')
+                save_path = os.path.join(latent_dir, f'{sha256}.npz')
                 np.savez_compressed(save_path, **pack)
-                records.append({'sha256': sha256, f'latent_{latent_name}': True})
+                records.append({'sha256': sha256, latent_col: True})
                 
             for _ in tqdm(range(len(sha256s)), desc="Extracting latents"):
                 sha256, feats = load_queue.get()
@@ -126,4 +143,4 @@ if __name__ == '__main__':
         print("Error happened during processing.")
         
     records = pd.DataFrame.from_records(records)
-    records.to_csv(os.path.join(opt.output_dir, f'latent_{latent_name}_{opt.rank}.csv'), index=False)
+    records.to_csv(os.path.join(opt.output_dir, f'latent_{latent_tag}_{opt.rank}.csv'), index=False)
