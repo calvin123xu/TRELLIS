@@ -20,6 +20,7 @@ conda activate /speed-scratch/qiaoyu/env/trellis
     sbatch -n my_scripts/render_toys4k_12v_one_chunk.sbatch
   
   3. python dataset_toolkits/render.py Toys4k --output_dir datasets/Toys4k_small
+     sbatch并线分组跑: my_scripts/render_toys4k_12v_rank4.sbatch
   
   4. python dataset_toolkits/voxelize.py Toys4k --output_dir datasets/Toys4k_small
   
