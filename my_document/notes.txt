@@ -52,6 +52,7 @@ conda activate /speed-scratch/qiaoyu/env/trellis
       --rank 0 \
       --world_size 1 \
       --output_feature_name dinov2_vitl14_reg_my_research
+
 //// encode latent from aggrated features
   python dataset_toolkits/encode_latent.py \
   --output_dir datasets/Toys4k_small \
