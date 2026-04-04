@@ -41,6 +41,13 @@ conda activate /speed-scratch/qiaoyu/env/trellis
     --bg 0,0,0
 ////// aggregation test pipeline
   //// generation view features
+    python extract_view_features.py \
+    --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small \
+    --model dinov2_vitl14_reg \
+    --instances one.txt \
+    --batch_size 8 \
+    --rank 0 \
+    --world_size 1
 
   //// aggregate features from view features using the declared aggreation method
     python aggregate_features.py \
