@@ -60,15 +60,15 @@ conda activate /speed-scratch/qiaoyu/env/trellis
       --world_size 1 \
       --output_feature_name dinov2_vitl14_reg_my_research
 
-//// encode latent from aggrated features
-  python dataset_toolkits/encode_latent.py \
-  --output_dir datasets/Toys4k_small \
-  --feat_model dinov2_vitl14_reg \
-  --feature_subdir dinov2_vitl14_reg_my_research \
-  --latent_subdir dinov2_vitl14_reg_my_research_slat_enc_swin8_B_64l8_fp16
-
-//// decode latent to gaussians
-  python my_scripts/decode_latents_to_gaussian.py \
+  //// encode latent from aggrated features
+    python dataset_toolkits/encode_latent.py \
     --output_dir datasets/Toys4k_small \
-    --latent_model dinov2_vitl14_reg_my_research_slat_enc_swin8_B_64l8_fp16 \
-    --save_dir gaussians_decoded__my_research
+    --feat_model dinov2_vitl14_reg \
+    --feature_subdir dinov2_vitl14_reg_my_research \
+    --latent_subdir dinov2_vitl14_reg_my_research_slat_enc_swin8_B_64l8_fp16
+
+  //// decode latent to gaussians
+    python my_scripts/decode_latents_to_gaussian.py \
+      --output_dir datasets/Toys4k_small \
+      --latent_model dinov2_vitl14_reg_my_research_slat_enc_swin8_B_64l8_fp16 \
+      --save_dir gaussians_decoded__my_research
