@@ -1,0 +1,9 @@
+////vallina mean baseline
+
+////visibility aware weighted average
+=== Aggregate ===
+time: 16:54 + 19:05 + 19:01 + 18:37
+N objects: 3229
+PSNR : 27.6370
+SSIM : 0.9412
+LPIPS: 0.0656
