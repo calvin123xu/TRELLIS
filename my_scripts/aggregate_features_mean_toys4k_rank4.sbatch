@@ -43,7 +43,7 @@ python --version
 OUTPUT_DIR="/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small"
 MODEL="dinov2_vitl14_reg"
 AGG="mean"
-OUTPUT_FEATURE_NAME="dinov2_vitl14_reg_baseline"
+OUTPUT_FEATURE_NAME="dinov2_vitl14_reg_mean"
 BATCH_SIZE=16
 WORLD_SIZE=4
 RANK="${SLURM_ARRAY_TASK_ID}"
