@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from torchvision import transforms
 from PIL import Image
+from aggregation_utils import aggregate_patchtokens
 
 
 torch.set_grad_enabled(False)
@@ -63,6 +64,12 @@ if __name__ == '__main__':
     parser.add_argument('--instances', type=str, default=None,
                         help='Instances to process')
     parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--aggregation_mode', type=str, default='visible_only', choices=['visible_only', 'mean'],
+                        help='Multiview feature aggregation mode. "visible_only" is the default behavior.')
+    parser.add_argument('--visibility_eps', type=float, default=1e-6,
+                        help='Small constant used in visible-only denominator to avoid division by zero.')
+    parser.add_argument('--visibility_margin', type=float, default=0.0,
+                        help='Optional in-bound margin (in normalized grid coordinates) used for visibility mask.')
     parser.add_argument('--rank', type=int, default=0)
     parser.add_argument('--world_size', type=int, default=1)
     opt = parser.parse_args()
@@ -129,14 +136,20 @@ if __name__ == '__main__':
 
             loader_executor.map(loader, sha256s)
             
-            def saver(sha256, pack, patchtokens, uv):
-                pack['patchtokens'] = F.grid_sample(
+            def saver(sha256, pack, patchtokens, uv, visibility_mask):
+                sampled_patchtokens = F.grid_sample(
                     patchtokens,
                     uv.unsqueeze(1),
                     mode='bilinear',
                     align_corners=False,
                 ).squeeze(2).permute(0, 2, 1).cpu().numpy()
-                pack['patchtokens'] = np.mean(pack['patchtokens'], axis=0).astype(np.float16)
+                visibility_mask = visibility_mask.cpu().numpy()
+                pack['patchtokens'] = aggregate_patchtokens(
+                    sampled_patchtokens,
+                    aggregation_mode=opt.aggregation_mode,
+                    visibility_mask=visibility_mask,
+                    eps=opt.visibility_eps,
+                ).astype(np.float16)
                 save_path = os.path.join(opt.output_dir, 'features', feature_name, f'{sha256}.npz')
                 np.savez_compressed(save_path, **pack)
                 records.append({'sha256': sha256, f'feature_{feature_name}' : True})
@@ -153,6 +166,11 @@ if __name__ == '__main__':
                 }
                 patchtokens_lst = []
                 uv_lst = []
+                visibility_mask_lst = []
+                positions_h = torch.cat([
+                    positions,
+                    torch.ones(positions.shape[0], 1, device=positions.device, dtype=positions.dtype),
+                ], dim=1)
                 for i in range(0, n_views, opt.batch_size):
                     batch_data = data[i:i+opt.batch_size]
                     bs = len(batch_data)
@@ -161,14 +179,25 @@ if __name__ == '__main__':
                     batch_intrinsics = torch.stack([d['intrinsics'] for d in batch_data]).cuda()
                     features = dinov2_model(batch_images, is_training=True)
                     uv = utils3d.torch.project_cv(positions, batch_extrinsics, batch_intrinsics)[0] * 2 - 1
+                    cam_space = torch.matmul(batch_extrinsics, positions_h.t()).transpose(1, 2)
+                    depth = cam_space[..., 2]
+                    in_bounds = (
+                        (uv[..., 0] >= (-1.0 + opt.visibility_margin)) &
+                        (uv[..., 0] <= (1.0 - opt.visibility_margin)) &
+                        (uv[..., 1] >= (-1.0 + opt.visibility_margin)) &
+                        (uv[..., 1] <= (1.0 - opt.visibility_margin))
+                    )
+                    visibility_mask = (depth > 0) & in_bounds
                     patchtokens = features['x_prenorm'][:, dinov2_model.num_register_tokens + 1:].permute(0, 2, 1).reshape(bs, 1024, n_patch, n_patch)
                     patchtokens_lst.append(patchtokens)
                     uv_lst.append(uv)
+                    visibility_mask_lst.append(visibility_mask)
                 patchtokens = torch.cat(patchtokens_lst, dim=0)
                 uv = torch.cat(uv_lst, dim=0)
+                visibility_mask = torch.cat(visibility_mask_lst, dim=0)
 
                 # save features
-                saver_executor.submit(saver, sha256, pack, patchtokens, uv)
+                saver_executor.submit(saver, sha256, pack, patchtokens, uv, visibility_mask)
                 
             saver_executor.shutdown(wait=True)
     except:
