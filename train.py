@@ -10,6 +10,11 @@ import torch.multiprocessing as mp
 import numpy as np
 import random
 
+os.environ["ATTN_BACKEND"] = "xformers"
+os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
+os.environ["SPCONV_ALGO"] = "native"
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from trellis import models, datasets, trainers
 from trellis.utils.dist_utils import setup_dist
 
@@ -56,6 +61,12 @@ def get_model_summary(model):
     return model_summary
 
 
+def get_param_counts(model):
+    num_params = sum(p.numel() for p in model.parameters())
+    num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return num_params, num_trainable_params
+
+
 def main(local_rank, cfg):
     # Set up distributed training
     rank = cfg.node_rank * cfg.num_gpus + local_rank
@@ -68,12 +79,35 @@ def main(local_rank, cfg):
 
     # Load data
     dataset = getattr(datasets, cfg.dataset.name)(cfg.data_dir, **cfg.dataset.args)
+    if rank == 0:
+        print(f'freeze_decoder={cfg.get("freeze_decoder", False)}')
+        if hasattr(dataset, 'feature_name'):
+            print(f'Dataset feature_name: {dataset.feature_name}')
+        if hasattr(dataset, 'feature_folders'):
+            for root, feature_folder in dataset.feature_folders.items():
+                print(f'Dataset feature folder: root={root}, path={feature_folder}')
 
     # Build model
     model_dict = {
         name: getattr(models, model.name)(**model.args).cuda()
         for name, model in cfg.models.items()
     }
+
+    freeze_decoder = cfg.get('freeze_decoder', False)
+    if freeze_decoder and 'decoder' in model_dict:
+        for param in model_dict['decoder'].parameters():
+            param.requires_grad = False
+        model_dict['decoder'].eval()
+        if rank == 0:
+            print('freeze_decoder=True: decoder parameters frozen, encoder-only finetuning mode enabled')
+
+    if rank == 0 and 'encoder' in model_dict and 'decoder' in model_dict:
+        encoder_params, encoder_trainable_params = get_param_counts(model_dict['encoder'])
+        decoder_params, decoder_trainable_params = get_param_counts(model_dict['decoder'])
+        print(
+            f'Encoder params (total/trainable): {encoder_params}/{encoder_trainable_params}; '
+            f'Decoder params (total/trainable): {decoder_params}/{decoder_trainable_params}'
+        )
 
     # Model summary
     if rank == 0:
