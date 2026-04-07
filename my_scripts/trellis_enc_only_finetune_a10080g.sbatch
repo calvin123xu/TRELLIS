@@ -21,7 +21,7 @@ nvidia-smi
 
 # Conda
 source /encs/pkg/anaconda3-2023.03/root/etc/profile.d/conda.sh
-conda activate /speed-scratch/qiaoyu/speed-hpc/env/trellis
+conda activate /speed-scratch/qiaoyu/env/trellis
 
 # Cache (bash version)
 source /speed-scratch/qiaoyu/speed-hpc/temp_cache_bash.sh
