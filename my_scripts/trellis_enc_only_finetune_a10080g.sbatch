@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=128G
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=trellis_enc_ft_%j.out
 #SBATCH --error=trellis_enc_ft_%j.err
 #SBATCH --mail-type=FAIL
