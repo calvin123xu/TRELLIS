@@ -37,7 +37,7 @@ cd /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS
 python train.py \
   --config configs/vae/slat_vae_enc_dec_gs_swin8_B_64l8_fp16_enc_only_finetune.json \
   --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/enc_only_finetune_a10080g_firstpass \
-  --data_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/data \
+  --data_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small \
   --ckpt none \
   --num_gpus 1 \
   --auto_retry 0
