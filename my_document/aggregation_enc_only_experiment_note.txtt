@@ -14,8 +14,8 @@
   //// decode latent to gaussians
     python my_scripts/decode_latents_to_gaussian.py \
       --output_dir datasets/Toys4k_small \
-      --latent_model dinov2_vitl14_reg_my_research_slat_enc_swin8_B_64l8_fp16 \
-      --save_dir gaussians_decoded__my_research
+      --latent_model dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_by_vis \
+      --save_dir gaussians_decoded_vis_weighted_enc_only_finetuned_by_vis_slat_enc_swin8_B_64l8_fp16
 
   ///3d representation evaluation
     python my_scripts/eval_render_metrics.py \
