@@ -10,6 +10,7 @@ LPIPS: 0.0656
 
 ////mean
 === Aggregate ===
+time: 16.5 + 15:19 + 17:5 +11:53
 N objects: 3229
 PSNR : 27.8653
 SSIM : 0.9425
