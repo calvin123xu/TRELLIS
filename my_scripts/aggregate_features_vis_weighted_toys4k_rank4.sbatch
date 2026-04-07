@@ -29,7 +29,7 @@ echo "HOST: $(hostname)"
 echo "START: $(date)"
 
 source /encs/pkg/anaconda3-2023.03/root/etc/profile.d/conda.sh
-conda activate /speed-scratch/qiaoyu/env/trellis
+conda activate activate /speed-scratch/qiaoyu/speed-hpc/env/trellis
 
 if [ -f /speed-scratch/qiaoyu/speed-hpc/temp_cache_bash.sh ]; then
     source /speed-scratch/qiaoyu/speed-hpc/temp_cache_bash.sh
