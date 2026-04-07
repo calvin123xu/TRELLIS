@@ -1,4 +1,5 @@
 {
+    "freeze_decoder": false,
     "models": {
         "encoder": {
             "name": "ElasticSLatEncoder",

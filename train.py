@@ -56,6 +56,12 @@ def get_model_summary(model):
     return model_summary
 
 
+def get_param_counts(model):
+    num_params = sum(p.numel() for p in model.parameters())
+    num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return num_params, num_trainable_params
+
+
 def main(local_rank, cfg):
     # Set up distributed training
     rank = cfg.node_rank * cfg.num_gpus + local_rank
@@ -74,6 +80,22 @@ def main(local_rank, cfg):
         name: getattr(models, model.name)(**model.args).cuda()
         for name, model in cfg.models.items()
     }
+
+    freeze_decoder = cfg.get('freeze_decoder', False)
+    if freeze_decoder and 'decoder' in model_dict:
+        for param in model_dict['decoder'].parameters():
+            param.requires_grad = False
+        model_dict['decoder'].eval()
+        if rank == 0:
+            print('freeze_decoder=True: decoder parameters frozen, encoder-only finetuning mode enabled')
+
+    if rank == 0 and 'encoder' in model_dict and 'decoder' in model_dict:
+        encoder_params, encoder_trainable_params = get_param_counts(model_dict['encoder'])
+        decoder_params, decoder_trainable_params = get_param_counts(model_dict['decoder'])
+        print(
+            f'Encoder params (total/trainable): {encoder_params}/{encoder_trainable_params}; '
+            f'Decoder params (total/trainable): {decoder_params}/{decoder_trainable_params}'
+        )
 
     # Model summary
     if rank == 0:
