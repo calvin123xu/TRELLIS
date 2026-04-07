@@ -74,6 +74,13 @@ def main(local_rank, cfg):
 
     # Load data
     dataset = getattr(datasets, cfg.dataset.name)(cfg.data_dir, **cfg.dataset.args)
+    if rank == 0:
+        print(f'freeze_decoder={cfg.get("freeze_decoder", False)}')
+        if hasattr(dataset, 'feature_name'):
+            print(f'Dataset feature_name: {dataset.feature_name}')
+        if hasattr(dataset, 'feature_folders'):
+            for root, feature_folder in dataset.feature_folders.items():
+                print(f'Dataset feature folder: root={root}, path={feature_folder}')
 
     # Build model
     model_dict = {

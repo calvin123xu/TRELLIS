@@ -26,23 +26,48 @@ class SparseFeat2Render(StandardDatasetBase):
         roots: str,
         image_size: int,
         model: str = 'dinov2_vitl14_reg',
+        feature_name: str = None,
         resolution: int = 64,
         min_aesthetic_score: float = 5.0,
         max_num_voxels: int = 32768,
     ):
         self.image_size = image_size
         self.model = model
+        self.feature_name = feature_name if feature_name is not None else model
         self.resolution = resolution
         self.min_aesthetic_score = min_aesthetic_score
         self.max_num_voxels = max_num_voxels
         self.value_range = (0, 1)
         
         super().__init__(roots)
+
+        self.feature_folders = {root: os.path.join(root, 'features', self.feature_name) for root in self.roots}
+        for root, feature_folder in self.feature_folders.items():
+            if not os.path.isdir(feature_folder):
+                raise FileNotFoundError(
+                    f'Feature folder not found for SparseFeat2Render: "{feature_folder}". '
+                    f'feature_name={self.feature_name}'
+                )
+        missing_feature_files = []
+        for root, instance in self.instances:
+            feats_path = os.path.join(self.feature_folders[root], f'{instance}.npz')
+            if not os.path.isfile(feats_path):
+                missing_feature_files.append(feats_path)
+                if len(missing_feature_files) >= 5:
+                    break
+        if len(missing_feature_files) > 0:
+            raise FileNotFoundError(
+                f'Missing feature files for SparseFeat2Render in features/{self.feature_name}. '
+                f'Examples: {missing_feature_files}'
+            )
         
     def filter_metadata(self, metadata):
         stats = {}
-        metadata = metadata[metadata[f'feature_{self.model}']]
-        stats['With features'] = len(metadata)
+        if self.feature_name == self.model:
+            metadata = metadata[metadata[f'feature_{self.model}']]
+            stats['With features'] = len(metadata)
+        else:
+            stats[f'Using feature override: {self.feature_name}'] = len(metadata)
         metadata = metadata[metadata['aesthetic_score'] >= self.min_aesthetic_score]
         stats[f'Aesthetic score >= {self.min_aesthetic_score}'] = len(metadata)
         metadata = metadata[metadata['num_voxels'] <= self.max_num_voxels]
@@ -79,7 +104,7 @@ class SparseFeat2Render(StandardDatasetBase):
     
     def _get_feat(self, root, instance):
         DATA_RESOLUTION = 64
-        feats_path = os.path.join(root, 'features', self.model, f'{instance}.npz')
+        feats_path = os.path.join(self.feature_folders[root], f'{instance}.npz')
         feats = np.load(feats_path, allow_pickle=True)
         coords = torch.tensor(feats['indices']).int()
         feats = torch.tensor(feats['patchtokens']).float()
