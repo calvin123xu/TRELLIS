@@ -10,6 +10,11 @@ import torch.multiprocessing as mp
 import numpy as np
 import random
 
+os.environ["ATTN_BACKEND"] = "xformers"
+os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
+os.environ["SPCONV_ALGO"] = "native"
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from trellis import models, datasets, trainers
 from trellis.utils.dist_utils import setup_dist
 
