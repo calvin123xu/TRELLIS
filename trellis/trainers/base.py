@@ -41,6 +41,9 @@ class Trainer:
         finetune_ckpt=None,
         log_param_stats=False,
         prefetch_data=True,
+        num_workers=None,
+        persistent_workers=True,
+        prefetch_factor=2,
         i_print=1000,
         i_log=500,
         i_sample=10000,
@@ -63,6 +66,9 @@ class Trainer:
         self.fp16_scale_growth = fp16_scale_growth
         self.log_param_stats = log_param_stats
         self.prefetch_data = prefetch_data
+        self.num_workers = num_workers
+        self.persistent_workers = persistent_workers
+        self.prefetch_factor = prefetch_factor
         if self.prefetch_data:
             self._data_prefetched = None
 
@@ -131,6 +137,15 @@ class Trainer:
         """
         Prepare dataloader.
         """
+        num_workers = self.num_workers if self.num_workers is not None else int(np.ceil(os.cpu_count() / torch.cuda.device_count()))
+        if num_workers == 0:
+            persistent_workers = False
+        else:
+            persistent_workers = self.persistent_workers
+        dataloader_kwargs = {}
+        if num_workers > 0 and self.prefetch_factor is not None:
+            dataloader_kwargs['prefetch_factor'] = self.prefetch_factor
+
         self.data_sampler = ResumableSampler(
             self.dataset,
             shuffle=True,
@@ -138,13 +153,16 @@ class Trainer:
         self.dataloader = DataLoader(
             self.dataset,
             batch_size=self.batch_size_per_gpu,
-            num_workers=int(np.ceil(os.cpu_count() / torch.cuda.device_count())),
+            num_workers=num_workers,
             pin_memory=True,
             drop_last=True,
-            persistent_workers=True,
+            persistent_workers=persistent_workers,
             collate_fn=self.dataset.collate_fn if hasattr(self.dataset, 'collate_fn') else None,
             sampler=self.data_sampler,
+            **dataloader_kwargs,
         )
+        if self.is_master:
+            print(f'DataLoader config: num_workers={num_workers}, persistent_workers={persistent_workers}, prefetch_factor={dataloader_kwargs.get("prefetch_factor", None)}')
         self.data_iterator = cycle(self.dataloader)
 
     @abstractmethod

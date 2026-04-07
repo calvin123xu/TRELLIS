@@ -65,6 +65,8 @@
             "max_steps": 10000,
             "batch_size_per_gpu": 4,
             "batch_split": 2,
+            "num_workers": 4,
+            "persistent_workers": false,
             "optimizer": {
                 "name": "AdamW",
                 "args": {
