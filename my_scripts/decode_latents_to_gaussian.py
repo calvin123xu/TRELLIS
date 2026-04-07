@@ -4,13 +4,35 @@ os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
 os.environ["SPCONV_ALGO"] = "native"
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import argparse
+import json
 import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
+from easydict import EasyDict as edict
 
 import trellis.models as models
 import trellis.modules.sparse as sp
+
+
+def _load_config(config_path: str):
+    with open(config_path, "r") as f:
+        return edict(json.load(f))
+
+
+def _extract_state_dict(ckpt_obj):
+    if isinstance(ckpt_obj, dict):
+        candidate_keys = ["state_dict", "model", "model_state_dict", "module", "ema"]
+        for key in candidate_keys:
+            if key in ckpt_obj and isinstance(ckpt_obj[key], dict):
+                return ckpt_obj[key]
+        if all(isinstance(k, str) for k in ckpt_obj.keys()):
+            return ckpt_obj
+    raise ValueError("Unsupported checkpoint format: expected a state_dict or a dict containing state_dict/model/model_state_dict/module/ema.")
+
+
+def _strip_module_prefix(state_dict):
+    return {k[7:] if k.startswith("module.") else k: v for k, v in state_dict.items()}
 
 
 
@@ -25,6 +47,12 @@ def main():
     parser.add_argument("--dec_pretrained", type=str,
                         default="microsoft/TRELLIS-image-large/ckpts/slat_dec_gs_swin8_B_64l8gs32_fp16",
                         help="pretrained gaussian decoder")
+    parser.add_argument("--dec_ckpt_path", type=str, default=None,
+                        help="explicit local decoder checkpoint .pt path")
+    parser.add_argument("--dec_config_path", type=str, default=None,
+                        help="explicit config.json path for local decoder checkpoint loading")
+    parser.add_argument("--dec_model_dir", type=str, default=None,
+                        help="optional trained model dir containing config.json (and usually ckpts/)")
     parser.add_argument("--save_dir", type=str, default=None,
                         help="decoded output directory. If relative, it is resolved under "
                              "<output_dir>. default: <output_dir>/gaussians_decoded")
@@ -96,7 +124,27 @@ def main():
     os.makedirs(save_dir, exist_ok=True)
 
     # 3) load Gaussian decoder
-    decoder = models.from_pretrained(args.dec_pretrained).eval().cuda()
+    if args.dec_ckpt_path is not None:
+        if args.dec_config_path is not None:
+            config_path = args.dec_config_path
+        elif args.dec_model_dir is not None:
+            config_path = os.path.join(args.dec_model_dir, "config.json")
+        else:
+            raise ValueError("When --dec_ckpt_path is provided, you must also provide --dec_config_path or --dec_model_dir.")
+
+        cfg = _load_config(config_path)
+        decoder = getattr(models, cfg.models.decoder.name)(**cfg.models.decoder.args).cuda()
+        ckpt_obj = torch.load(args.dec_ckpt_path, map_location="cpu")
+        state_dict = _strip_module_prefix(_extract_state_dict(ckpt_obj))
+        incompatible = decoder.load_state_dict(state_dict, strict=False)
+        if len(incompatible.missing_keys) > 0:
+            print(f"[decoder] missing_keys: {incompatible.missing_keys}")
+        if len(incompatible.unexpected_keys) > 0:
+            print(f"[decoder] unexpected_keys: {incompatible.unexpected_keys}")
+        decoder.eval()
+        print(f"Loaded decoder checkpoint from {args.dec_ckpt_path}")
+    else:
+        decoder = models.from_pretrained(args.dec_pretrained).eval().cuda()
 
     # 4) decode each latent -> gaussian -> ply
     for sha in tqdm(sha_list, desc="Decoding latents to gaussian"):

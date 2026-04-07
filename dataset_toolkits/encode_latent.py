@@ -7,6 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import copy
 import json
 import argparse
+from pathlib import Path
 import torch
 import numpy as np
 import pandas as pd
@@ -19,6 +20,26 @@ import trellis.models as models
 import trellis.modules.sparse as sp
 
 torch.set_grad_enabled(False)
+
+
+def _load_config(config_path: str):
+    with open(config_path, 'r') as f:
+        return edict(json.load(f))
+
+
+def _extract_state_dict(ckpt_obj):
+    if isinstance(ckpt_obj, dict):
+        candidate_keys = ['state_dict', 'model', 'model_state_dict', 'module', 'ema']
+        for key in candidate_keys:
+            if key in ckpt_obj and isinstance(ckpt_obj[key], dict):
+                return ckpt_obj[key]
+        if all(isinstance(k, str) for k in ckpt_obj.keys()):
+            return ckpt_obj
+    raise ValueError('Unsupported checkpoint format: expected a state_dict or a dict containing state_dict/model/model_state_dict/module/ema.')
+
+
+def _strip_module_prefix(state_dict):
+    return {k[7:] if k.startswith('module.') else k: v for k, v in state_dict.items()}
 
 
 if __name__ == '__main__':
@@ -37,6 +58,10 @@ if __name__ == '__main__':
                         help='Root directory of models')
     parser.add_argument('--enc_model', type=str, default=None,
                         help='Encoder model. if specified, use this model instead of pretrained model')
+    parser.add_argument('--enc_ckpt_path', type=str, default=None,
+                        help='Explicit local encoder checkpoint .pt path')
+    parser.add_argument('--enc_config_path', type=str, default=None,
+                        help='Explicit config.json path for local encoder checkpoint loading')
     parser.add_argument('--ckpt', type=str, default=None,
                         help='Checkpoint to load')
     parser.add_argument('--latent_subdir', type=str, default=None,
@@ -48,15 +73,42 @@ if __name__ == '__main__':
     opt = parser.parse_args()
     opt = edict(vars(opt))
 
-    if opt.enc_model is None:
+    if opt.enc_ckpt_path is not None:
+        if opt.enc_config_path is not None:
+            config_path = opt.enc_config_path
+        elif opt.enc_model is not None:
+            config_path = os.path.join(opt.model_root, opt.enc_model, 'config.json')
+        else:
+            raise ValueError('When --enc_ckpt_path is provided, you must also provide --enc_config_path or --enc_model for config.json lookup.')
+
+        cfg = _load_config(config_path)
+        encoder = getattr(models, cfg.models.encoder.name)(**cfg.models.encoder.args).cuda()
+        ckpt_obj = torch.load(opt.enc_ckpt_path, map_location='cpu')
+        state_dict = _strip_module_prefix(_extract_state_dict(ckpt_obj))
+        incompatible = encoder.load_state_dict(state_dict, strict=False)
+        if len(incompatible.missing_keys) > 0:
+            print(f'[encoder] missing_keys: {incompatible.missing_keys}')
+        if len(incompatible.unexpected_keys) > 0:
+            print(f'[encoder] unexpected_keys: {incompatible.unexpected_keys}')
+        encoder.eval()
+        print(f'Loaded model from {opt.enc_ckpt_path}')
+
+        latent_name = f'{opt.feat_model}_{Path(opt.enc_ckpt_path).stem}'
+    elif opt.enc_model is None:
         latent_name = f'{opt.feat_model}_{opt.enc_pretrained.split("/")[-1]}'
         encoder = models.from_pretrained(opt.enc_pretrained).eval().cuda()
     else:
         latent_name = f'{opt.feat_model}_{opt.enc_model}_{opt.ckpt}'
-        cfg = edict(json.load(open(os.path.join(opt.model_root, opt.enc_model, 'config.json'), 'r')))
+        cfg = _load_config(os.path.join(opt.model_root, opt.enc_model, 'config.json'))
         encoder = getattr(models, cfg.models.encoder.name)(**cfg.models.encoder.args).cuda()
         ckpt_path = os.path.join(opt.model_root, opt.enc_model, 'ckpts', f'encoder_{opt.ckpt}.pt')
-        encoder.load_state_dict(torch.load(ckpt_path), strict=False)
+        ckpt_obj = torch.load(ckpt_path, map_location='cpu')
+        state_dict = _strip_module_prefix(_extract_state_dict(ckpt_obj))
+        incompatible = encoder.load_state_dict(state_dict, strict=False)
+        if len(incompatible.missing_keys) > 0:
+            print(f'[encoder] missing_keys: {incompatible.missing_keys}')
+        if len(incompatible.unexpected_keys) > 0:
+            print(f'[encoder] unexpected_keys: {incompatible.unexpected_keys}')
         encoder.eval()
         print(f'Loaded model from {ckpt_path}')
 
