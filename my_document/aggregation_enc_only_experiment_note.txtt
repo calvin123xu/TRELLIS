@@ -1,6 +1,5 @@
 
 ////// aggregation test pipeline
-  
 
   //// encode latent from aggrated features
     python dataset_toolkits/encode_latent.py \
