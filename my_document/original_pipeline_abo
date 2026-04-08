@@ -1,0 +1,43 @@
+conda activate /speed-scratch/qiaoyu/env/trellis
+////// original pipeline
+  ////feature extraction pipeline
+    跑通第一个数据集从下载到提取特征
+    2. 3. 4. 5.步之后都要python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
+  
+    0. bash ./dataset_toolkits/setup.sh
+    
+    1. python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
+    
+    2. python dataset_toolkits/download.py Toys4k --output_dir datasets/Toys4k_small
+  
+    2.5 这一步现在不用了，直接用my_scripts/render_toys4k_12v_rank4.sbatch就可以自动分配并线组
+      python my_scripts/make_unrendered_chunks.py \
+      --output_dir datasets/Toys4k_small \
+      --chunk_size 64 \
+      --txt_dir datasets/Toys4k_small/render_chunks \
+      --require_local_path
+  
+      sbatch -n my_scripts/render_toys4k_12v_one_chunk.sbatch
+    
+    3. python dataset_toolkits/render.py Toys4k --output_dir datasets/Toys4k_small
+       sbatch并线分组跑: my_scripts/render_toys4k_12v_rank4.sbatch
+    
+    4. python dataset_toolkits/voxelize.py Toys4k --output_dir datasets/Toys4k_small
+    
+    5. python dataset_toolkits/extract_feature.py --output_dir datasets/Toys4k_small
+  
+  ///feature to 3d representation
+    1. 2. 步之后都要python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
+    1. python dataset_toolkits/encode_latent.py --output_dir datasets/Toys4k_small
+    
+    2.python my_scripts/decode_latents_to_gaussian.py --output_dir datasets/Toys4k_small
+      //改进：检查如果已有gaussian就不生成了
+  
+  ///3d representation evaluation
+  python my_scripts/eval_render_metrics.py \
+    --output_dir datasets/Toys4k_small \
+    --gauss_dir datasets/Toys4k_small/gaussians_decoded \
+    --resolution 512 \
+    --bg 0,0,0
+
+
