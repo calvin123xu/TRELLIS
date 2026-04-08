@@ -50,11 +50,20 @@ echo "Checking Blender..."
 OUTPUT_DIR="datasets/ABO"
 WORLD_SIZE=4
 NUM_VIEWS=12
-MAX_WORKERS=6
+MAX_WORKERS=2
 RANK="${SLURM_ARRAY_TASK_ID}"
+
+# Headless runtime fixes for Blender on shared HPC nodes
+export DISPLAY=""
+export SDL_AUDIODRIVER="dummy"
+export PULSE_SERVER="unix:/dev/null"
+export XDG_RUNTIME_DIR="${SLURM_TMPDIR:-/tmp}/xdg-runtime-${UID}-${SLURM_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+mkdir -p "${XDG_RUNTIME_DIR}"
+chmod 700 "${XDG_RUNTIME_DIR}"
 
 echo "OUTPUT_DIR=${OUTPUT_DIR}"
 echo "WORLD_SIZE=${WORLD_SIZE}, RANK=${RANK}, NUM_VIEWS=${NUM_VIEWS}, MAX_WORKERS=${MAX_WORKERS}"
+echo "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}"
 
 python dataset_toolkits/render.py ABO \
   --output_dir "${OUTPUT_DIR}" \
