@@ -16,9 +16,9 @@
 #SBATCH --partition=pt
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=24
+#SBATCH --cpus-per-task=32
 #SBATCH --mem=512G
-#SBATCH --gres=gpu:a100:1
+#SBATCH --gres=gpu:nvidia_a100_7g.80gb:1
 #SBATCH --time=36:00:00
 #SBATCH --output=trellis_abo_render_12v_single_%j.out
 #SBATCH --error=trellis_abo_render_12v_single_%j.err
