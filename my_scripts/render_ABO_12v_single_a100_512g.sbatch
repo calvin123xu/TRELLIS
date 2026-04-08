@@ -46,9 +46,16 @@ python --version
 # - Ensure runtime dir exists (avoids PulseAudio /run/user/$UID warnings on compute nodes).
 # - Clear DISPLAY to avoid stale login-node X11 forwarding.
 # - Disable audio backends that are irrelevant for batch rendering.
-export XDG_RUNTIME_DIR="${SLURM_TMPDIR:-/tmp}/xdg-runtime-${UID}"
+if [ -d "/run/user/${UID}" ]; then
+  export XDG_RUNTIME_DIR="/run/user/${UID}"
+else
+  export XDG_RUNTIME_DIR="${SLURM_TMPDIR:-/tmp}/xdg-runtime-${UID}"
+fi
 mkdir -p "${XDG_RUNTIME_DIR}"
 chmod 700 "${XDG_RUNTIME_DIR}"
+# Some GLib/GIO code paths probe ${XDG_RUNTIME_DIR}/gvfs and print a warning
+# if it does not exist. Pre-create it to reduce noisy logs in batch jobs.
+mkdir -p "${XDG_RUNTIME_DIR}/gvfs"
 export DISPLAY=
 export SDL_AUDIODRIVER=dummy
 export PULSE_SERVER=127.0.0.1
