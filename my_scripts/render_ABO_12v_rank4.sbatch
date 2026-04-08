@@ -17,7 +17,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=512G  # 4 concurrent lanes × 128G/lane = 512G total requested memory.
 #SBATCH --gpus=1
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=trellis_abo_render_12v_r4_%j.out
 #SBATCH --error=trellis_abo_render_12v_r4_%j.err
 #SBATCH --mail-type=FAIL
