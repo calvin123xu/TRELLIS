@@ -41,8 +41,6 @@ fi
 
 cd /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS
 
-python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
-
 echo "Python: $(which python)"
 python --version
 
