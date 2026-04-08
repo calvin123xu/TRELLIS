@@ -16,7 +16,7 @@
 #SBATCH --partition=pt
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
+#SBATCH --cpus-per-task=24
 #SBATCH --mem=512G
 #SBATCH --gres=gpu:nvidia_a100_7g.80gb:1
 #SBATCH --time=36:00:00
