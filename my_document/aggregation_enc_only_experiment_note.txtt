@@ -1,3 +1,32 @@
+//////feature generation
+  //// generation view features
+      python extract_view_features.py \
+      --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small \
+      --model dinov2_vitl14_reg \
+      --instances one.txt \
+      --batch_size 8 \
+      --rank 0 \
+      --world_size 1
+
+  //// aggregate features from view features using the declared aggreation method
+    --agg:
+      baseline (vanilla mean): mean
+      visibility aware weighted: vis_weighted
+
+  sample call:
+      python aggregate_features.py \
+        --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small \
+        --model dinov2_vitl14_reg \
+        --agg mean \
+        --instances one.txt \
+        --batch_size 8 \
+        --rank 0 \
+        --world_size 1 \
+        --output_feature_name dinov2_vitl14_reg_my_research
+
+   parrallel 4:
+   sbatch my_scripts/aggregate_features_vis_weighted_toys4k_rank4.sbatch
+
 
 ////// aggregation test pipeline
 
