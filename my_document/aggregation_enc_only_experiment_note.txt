@@ -1,7 +1,7 @@
 
 ////// aggregation test pipeline
 
-  //// encode latent from aggrated features
+  //// encode latent from aggregated features
     python dataset_toolkits/encode_latent.py \
       --output_dir datasets/Toys4k_small \
       --feat_model dinov2_vitl14_reg \
