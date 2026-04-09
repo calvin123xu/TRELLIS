@@ -1,54 +1,59 @@
+# 0. prerequisite: metadata / download / render / voxelize
+python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+python dataset_toolkits/download.py ABO --output_dir datasets/ABO
+python dataset_toolkits/render.py ABO --output_dir datasets/ABO
+python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+# start from here
+python dataset_toolkits/voxelize.py ABO --output_dir datasets/ABO
+python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
 
-///////feature aggregation
+# 1. extract per-view features on ABO
+python dataset_toolkits/extract_view_features.py \
+  --output_dir datasets/ABO \
+  --model dinov2_vitl14_reg \
+  --batch_size 8 \
+  --rank 0 \
+  --world_size 1
 
-  //// generation view features
-    python extract_view_features.py \
-    --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/ABO \
-    --model dinov2_vitl14_reg \
-    --batch_size 8 \
-    --rank 0 \
-    --world_size 1
+# 2. aggregate to voxel features on ABO
+python dataset_toolkits/aggregate_features.py \
+  --output_dir datasets/ABO \
+  --model dinov2_vitl14_reg \
+  --agg vis_weighted \
+  --batch_size 8 \
+  --rank 0 \
+  --world_size 1 \
+  --output_feature_name dinov2_vitl14_reg_vis_weighted
 
-  //// aggregate features from view features using the declared aggreation method
-  --agg:
-    baseline (vanilla mean): mean
-    visibility aware weighted: vis_weighted
+# 3. merge feature records into metadata
+python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
 
-    python aggregate_features.py \
-      --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small \
-      --model dinov2_vitl14_reg \
-      --agg vis_weighted \
-      --batch_size 8 \
-      --rank 0 \
-      --world_size 1 \
-      --output_feature_name dinov2_vitl14_reg_vis_weighted
+# 4. encoder-only finetune on ABO
+# sbatch 里把 --data_dir 改成 datasets/ABO
+sbatch my_scripts/trellis_enc_only_finetune_ABO_a10080g_.sbatch
 
-/////// encoder only training using ABO
+# 5. encode ABO latents using finetuned encoder
+python dataset_toolkits/encode_latent.py \
+  --output_dir datasets/ABO \
+  --feat_model dinov2_vitl14_reg \
+  --feature_subdir dinov2_vitl14_reg_vis_weighted \
+  --model_root outputs \
+  --enc_model enc_only_finetune_ABO_a10080g_firstpass \
+  --ckpt ema0.9999_step0050000 \
+  --latent_subdir dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_by_vis
 
-       my_scripts/trellis_enc_only_finetune_ABO_a10080g_.sbatch #通过my_scripts/trellis_enc_only_finetune_a10080g.sbatch来改
+# 6. merge latent records
+python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
 
+# 7. decode ABO latents to gaussians
+python my_scripts/decode_latents_to_gaussian.py \
+  --output_dir datasets/ABO \
+  --latent_model dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_by_vis \
+  --save_dir gaussians_decoded_vis_weighted_enc_only_finetuned_by_vis_slat_enc_swin8_B_64l8_fp16
 
-////// aggregation test pipeline
-
-  //// encode latent from aggregated features
-    python dataset_toolkits/encode_latent.py \
-      --output_dir datasets/Toys4k_small \
-      --feat_model dinov2_vitl14_reg \
-      --feature_subdir dinov2_vitl14_reg_vis_weighted \
-      --model_root outputs \
-      --enc_model enc_only_finetune_a10080g_firstpass \
-      --ckpt ema0.9999_step0050000 \
-      --latent_subdir dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_by_vis
-
-  //// decode latent to gaussians
-    python my_scripts/decode_latents_to_gaussian.py \
-      --output_dir datasets/Toys4k_small \
-      --latent_model dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_by_vis \
-      --save_dir gaussians_decoded_vis_weighted_enc_only_finetuned_by_vis_slat_enc_swin8_B_64l8_fp16
-
-  ///3d representation evaluation
-    python my_scripts/eval_render_metrics.py \
-      --output_dir datasets/Toys4k_small \
-      --gauss_dir datasets/Toys4k_small/gaussians_decoded_vis_weighted_enc_only_finetuned_by_vis_slat_enc_swin8_B_64l8_fp16 \
-      --resolution 512 \
-      --bg 0,0,0
+# 8. evaluate ABO
+python my_scripts/eval_render_metrics.py \
+  --output_dir datasets/ABO \
+  --gauss_dir datasets/ABO/gaussians_decoded_vis_weighted_enc_only_finetuned_by_vis_slat_enc_swin8_B_64l8_fp16 \
+  --resolution 512 \
+  --bg 0,0,0
