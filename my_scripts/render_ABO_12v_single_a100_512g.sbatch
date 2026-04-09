@@ -16,8 +16,8 @@
 #SBATCH --partition=pt
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=256G
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=128G
 #SBATCH --gpus=1
 #SBATCH --time=24:00:00
 #SBATCH --output=trellis_abo_render_12v_single_%j.out
