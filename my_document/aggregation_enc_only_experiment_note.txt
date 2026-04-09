@@ -8,7 +8,8 @@
 
 /////// encoder only training using ABO
 
-       my_scripts/trellis_enc_only_finetune_ABO_a10080g_.sbatch
+       my_scripts/trellis_enc_only_finetune_ABO_a10080g_.sbatch #通过my_scripts/trellis_enc_only_finetune_a10080g.sbatch来改
+
 
 ////// aggregation test pipeline
 
