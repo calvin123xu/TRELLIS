@@ -47,7 +47,7 @@ sbatch my_scripts/trellis_enc_only_finetune_ABO_a10080g_.sbatch
 
 
 # ---------------------------------------------------------
-# B. Toys4k_small test dataset preprocessing
+# B. Toys4k_small test dataset preprocessing (already done, can skip)
 # ---------------------------------------------------------
 
 # IMPORTANT:
