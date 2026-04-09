@@ -18,12 +18,11 @@
     python aggregate_features.py \
       --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small \
       --model dinov2_vitl14_reg \
-      --agg mean \
-      --instances one.txt \
+      --agg vis_weighted \
       --batch_size 8 \
       --rank 0 \
       --world_size 1 \
-      --output_feature_name dinov2_vitl14_reg_my_research
+      --output_feature_name dinov2_vitl14_reg_vis_weighted
 
 /////// encoder only training using ABO
 
