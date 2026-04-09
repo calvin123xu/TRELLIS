@@ -1,9 +1,20 @@
+# =========================================================
+# Goal:
+#   Train encoder on ABO (using vis_weighted aggregated features),
+#   then test that finetuned encoder on Toys4k_small.
+# =========================================================
+
+# ---------------------------------------------------------
+# A. ABO training dataset preprocessing
+# ---------------------------------------------------------
+
 # 0. prerequisite: metadata / download / render / voxelize
 python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
 python dataset_toolkits/download.py ABO --output_dir datasets/ABO
 python dataset_toolkits/render.py ABO --output_dir datasets/ABO
 python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
-# start from here
+
+# start from here if render is already done
 python dataset_toolkits/voxelize.py ABO --output_dir datasets/ABO
 python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
 
@@ -15,7 +26,7 @@ python dataset_toolkits/extract_view_features.py \
   --rank 0 \
   --world_size 1
 
-# 2. aggregate to voxel features on ABO
+# 2. aggregate view features into voxel features on ABO
 python dataset_toolkits/aggregate_features.py \
   --output_dir datasets/ABO \
   --model dinov2_vitl14_reg \
@@ -29,22 +40,51 @@ python dataset_toolkits/aggregate_features.py \
 python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
 
 # 4. encoder-only finetune on ABO
-# sbatch 里把 --data_dir 改成 datasets/ABO
+# IMPORTANT:
+#   In the sbatch script, change --data_dir to datasets/ABO
+#   and preferably also change --output_dir to an ABO-specific name.
 sbatch my_scripts/trellis_enc_only_finetune_ABO_a10080g_.sbatch
 
-# 5. encode ABO latents using finetuned encoder
-python dataset_toolkits/encode_latent.py \
-  --output_dir datasets/ABO \
-  --feat_model dinov2_vitl14_reg \
-  --feature_subdir dinov2_vitl14_reg_vis_weighted \
-  --model_root outputs \
-  --enc_model enc_only_finetune_ABO_a10080g_firstpass \
-  --ckpt ema0.9999_step0050000 \
-  --latent_subdir dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_by_vis
 
-python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+# ---------------------------------------------------------
+# B. Toys4k_small test dataset preprocessing
+# ---------------------------------------------------------
 
-# 6. merge latent records
+# IMPORTANT:
+#   Before encoding Toys4k_small with the finetuned encoder,
+#   Toys4k_small must also have vis_weighted aggregated features.
+
+# 5. prerequisite for Toys4k_small:
+#    make sure render + voxelize are already done for Toys4k_small
+#    then extract per-view features
+python dataset_toolkits/extract_view_features.py \
+  --output_dir datasets/Toys4k_small \
+  --model dinov2_vitl14_reg \
+  --batch_size 8 \
+  --rank 0 \
+  --world_size 1
+
+# 6. aggregate view features into voxel features on Toys4k_small
+python dataset_toolkits/aggregate_features.py \
+  --output_dir datasets/Toys4k_small \
+  --model dinov2_vitl14_reg \
+  --agg vis_weighted \
+  --batch_size 8 \
+  --rank 0 \
+  --world_size 1 \
+  --output_feature_name dinov2_vitl14_reg_vis_weighted
+
+# 7. merge Toys4k_small feature records into metadata
+# Replace "Toys4k" below with the exact dataset key you originally used
+# when running build_metadata for this dataset.
+python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
+
+
+# ---------------------------------------------------------
+# C. Test on Toys4k_small using the ABO-finetuned encoder
+# ---------------------------------------------------------
+
+# 8. encode Toys4k_small latents using the encoder finetuned on ABO
 python dataset_toolkits/encode_latent.py \
   --output_dir datasets/Toys4k_small \
   --feat_model dinov2_vitl14_reg \
@@ -54,13 +94,16 @@ python dataset_toolkits/encode_latent.py \
   --ckpt ema0.9999_step0050000 \
   --latent_subdir dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_on_ABO
 
-# 7. decode ABO latents to gaussians
+# 9. merge latent records into metadata
+python dataset_toolkits/build_metadata.py Toys4k --output_dir datasets/Toys4k_small
+
+# 10. decode Toys4k_small latents to gaussians
 python my_scripts/decode_latents_to_gaussian.py \
   --output_dir datasets/Toys4k_small \
   --latent_model dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_on_ABO \
   --save_dir gaussians_decoded_vis_weighted_enc_only_finetuned_on_ABO
 
-# 8. evaluate ABO
+# 11. evaluate Toys4k_small
 python my_scripts/eval_render_metrics.py \
   --output_dir datasets/Toys4k_small \
   --gauss_dir datasets/Toys4k_small/gaussians_decoded_vis_weighted_enc_only_finetuned_on_ABO \
