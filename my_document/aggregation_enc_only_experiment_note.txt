@@ -42,18 +42,27 @@ python dataset_toolkits/encode_latent.py \
   --ckpt ema0.9999_step0050000 \
   --latent_subdir dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_by_vis
 
-# 6. merge latent records
 python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+
+# 6. merge latent records
+python dataset_toolkits/encode_latent.py \
+  --output_dir datasets/Toys4k_small \
+  --feat_model dinov2_vitl14_reg \
+  --feature_subdir dinov2_vitl14_reg_vis_weighted \
+  --model_root outputs \
+  --enc_model enc_only_finetune_ABO_a10080g_firstpass \
+  --ckpt ema0.9999_step0050000 \
+  --latent_subdir dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_on_ABO
 
 # 7. decode ABO latents to gaussians
 python my_scripts/decode_latents_to_gaussian.py \
-  --output_dir datasets/ABO \
-  --latent_model dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_by_vis \
-  --save_dir gaussians_decoded_vis_weighted_enc_only_finetuned_by_vis_slat_enc_swin8_B_64l8_fp16
+  --output_dir datasets/Toys4k_small \
+  --latent_model dinov2_vitl14_reg_vis_weighted_enc_only_finetuned_on_ABO \
+  --save_dir gaussians_decoded_vis_weighted_enc_only_finetuned_on_ABO
 
 # 8. evaluate ABO
 python my_scripts/eval_render_metrics.py \
-  --output_dir datasets/ABO \
-  --gauss_dir datasets/ABO/gaussians_decoded_vis_weighted_enc_only_finetuned_by_vis_slat_enc_swin8_B_64l8_fp16 \
+  --output_dir datasets/Toys4k_small \
+  --gauss_dir datasets/Toys4k_small/gaussians_decoded_vis_weighted_enc_only_finetuned_on_ABO \
   --resolution 512 \
   --bg 0,0,0
