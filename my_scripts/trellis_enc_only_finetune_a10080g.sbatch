@@ -5,8 +5,8 @@
 #SBATCH --gres=gpu:nvidia_a100_7g.80gb:1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=256G
+#SBATCH --cpus-per-task=32
+#SBATCH --mem=512G
 #SBATCH --time=24:00:00
 #SBATCH --output=trellis_enc_ft_%j.out
 #SBATCH --error=trellis_enc_ft_%j.err
