@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=128G
-#SBATCH --gpu=1
+#SBATCH --gpus=1
 #SBATCH --time=24:00:00
 #SBATCH --array=0-3
 #SBATCH --output=trellis_abo_agg_visw_r4_%A_%a.out
