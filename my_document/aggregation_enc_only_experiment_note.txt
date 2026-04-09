@@ -1,4 +1,14 @@
 
+///////feature aggregation
+
+       python dataset_toolkits/voxelize.py ABO --output_dir datasets/ABO
+       python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+       python dataset_toolkits/extract_feature.py --output_dir datasets/ABO
+       python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+
+/////// encoder only training using ABO
+
+
 ////// aggregation test pipeline
 
   //// encode latent from aggregated features
