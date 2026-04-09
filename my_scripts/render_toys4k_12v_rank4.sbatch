@@ -56,7 +56,7 @@ echo "WORLD_SIZE=${WORLD_SIZE}, RANK=${RANK}"
 python dataset_toolkits/render.py Toys4k \
   --output_dir "${OUTPUT_DIR}" \
   --num_views 12 \
-  --max_workers 6 \
+  --max_workers 4 \
   --rank "${RANK}" \
   --world_size "${WORLD_SIZE}" \
   --record_tag "${RANK}"
