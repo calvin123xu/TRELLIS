@@ -17,7 +17,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=256G
+#SBATCH --gres=gpu:nvidia_a100_7g.80gb:1
 #SBATCH --gres=gpu:1
 #SBATCH --time=24:00:00
 #SBATCH --output=trellis_abo_render_12v_single_%j.out
@@ -66,7 +66,7 @@ echo "Checking Blender..."
 OUTPUT_DIR="datasets/ABO"
 WORLD_SIZE=1
 RANK=0
-MAX_WORKERS=1
+MAX_WORKERS=6
 
 echo "WORLD_SIZE=${WORLD_SIZE}, RANK=${RANK}, MAX_WORKERS=${MAX_WORKERS}"
 
