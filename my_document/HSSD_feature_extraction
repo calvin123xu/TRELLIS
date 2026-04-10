@@ -2,7 +2,7 @@ conda activate /speed-scratch/qiaoyu/env/trellis
 ////// original pipeline
   ////feature extraction pipeline
     跑通第一个数据集从下载到提取特征
-    2. 3. 4. 5.步之后都要python dataset_toolkits/build_metadata.py HSSD --output_dir datasets/HSSD
+    2. 3. 4. 5.步之后都要python dataset_toolkits/build_metadata.py hssd-models --output_dir datasets/hssd-models
   
     0. bash ./dataset_toolkits/setup.sh
     
