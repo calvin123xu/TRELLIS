@@ -6,7 +6,7 @@ conda activate /speed-scratch/qiaoyu/env/trellis
   
     0. bash ./dataset_toolkits/setup.sh
     
-    1. python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+    1. python dataset_toolkits/build_metadata.py hssd-models --output_dir datasets/hssd-models
     
     2. python dataset_toolkits/download.py ABO --output_dir datasets/ABO
     
