@@ -1,0 +1,32 @@
+conda activate /speed-scratch/qiaoyu/env/trellis
+////// original pipeline
+  ////feature extraction pipeline
+    跑通第一个数据集从下载到提取特征
+    2. 3. 4. 5.步之后都要python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+  
+    0. bash ./dataset_toolkits/setup.sh
+    
+    1. python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+    
+    2. python dataset_toolkits/download.py ABO --output_dir datasets/ABO
+    
+    3. python dataset_toolkits/render.py ABO --output_dir datasets/ABO
+       sbatch并线分组跑: my_scripts/render_ABO_12v_rank4.sbatch
+    
+    4. python dataset_toolkits/voxelize.py ABO --output_dir datasets/ABO
+    
+    5. python dataset_toolkits/extract_feature.py --output_dir datasets/ABO
+  
+  ///feature to 3d representation
+    1. 2. 步之后都要python dataset_toolkits/build_metadata.py ABO --output_dir datasets/ABO
+    1. python dataset_toolkits/encode_latent.py --output_dir datasets/ABO
+    
+    2.python my_scripts/decode_latents_to_gaussian.py --output_dir datasets/ABO
+  
+  ///3d representation evaluation
+  python my_scripts/eval_render_metrics.py \
+    --output_dir datasets/ABO \
+    --gauss_dir datasets/ABO/gaussians_decoded \
+    --resolution 512 \
+    --bg 0,0,0
+
