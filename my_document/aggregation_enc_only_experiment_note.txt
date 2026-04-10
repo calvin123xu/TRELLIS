@@ -1,3 +1,4 @@
+conda activate /speed-scratch/qiaoyu/env/trellis
 # =========================================================
 # Goal:
 #   Train encoder on ABO (using vis_weighted aggregated features),
