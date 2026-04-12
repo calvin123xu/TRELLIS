@@ -23,3 +23,9 @@ N objects: 3229
 PSNR : 14.5111
 SSIM : 0.7075
 LPIPS: 0.3627
+
+////enc + dec trained on ABO
+N objects: 3229
+PSNR : 24.3341
+SSIM : 0.9255
+LPIPS: 0.1052
