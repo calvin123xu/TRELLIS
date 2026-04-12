@@ -1,0 +1,66 @@
+conda activate /speed-scratch/qiaoyu/env/trellis
+# =========================================================
+# Goal:
+#   使用 ABO 上 finetune 的 encoder+decoder（170000 steps）
+#   在 Toys4k_small 测试集上做编码、解码和评估。
+# =========================================================
+
+# ---------------------------------------------------------
+# A. 路径约定（按你给的绝对路径）
+# ---------------------------------------------------------
+TRELLIS_ROOT=/nfs/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS
+CKPT_DIR=${TRELLIS_ROOT}/outputs/finetune_vis_abo/ckpts
+TEST_FEATURE_DIR=${TRELLIS_ROOT}/datasets/Toys4k_small/features
+TEST_OUTPUT_DIR=${TRELLIS_ROOT}/datasets/Toys4k_small
+
+# 170000 steps checkpoint（按常见命名）
+ENC_CKPT=${CKPT_DIR}/encoder_ema0.9999_step0170000.pt
+DEC_CKPT=${CKPT_DIR}/decoder_ema0.9999_step0170000.pt
+
+# 可选：如果实际命名略有差异，用下面命令自动查找
+# ENC_CKPT=$(find "${CKPT_DIR}" -maxdepth 1 -type f | grep -E 'encoder.*step0?170000|encoder.*step0170000' | head -n 1)
+# DEC_CKPT=$(find "${CKPT_DIR}" -maxdepth 1 -type f | grep -E 'decoder.*step0?170000|decoder.*step0170000' | head -n 1)
+
+# 检查 checkpoint 和测试特征目录
+ls -lh "${ENC_CKPT}"
+ls -lh "${DEC_CKPT}"
+ls -lh "${TEST_FEATURE_DIR}"
+
+
+# ---------------------------------------------------------
+# B. 用 ABO finetuned encoder 编码 Toys4k_small
+# ---------------------------------------------------------
+cd ${TRELLIS_ROOT}
+
+python dataset_toolkits/encode_latent.py \
+  --output_dir "${TEST_OUTPUT_DIR}" \
+  --feat_model dinov2_vitl14_reg \
+  --feature_subdir dinov2_vitl14_reg_vis_weighted \
+  --enc_ckpt_path "${ENC_CKPT}" \
+  --enc_model finetune_vis_abo \
+  --model_root "${TRELLIS_ROOT}/outputs" \
+  --latent_subdir dinov2_vitl14_reg_vis_weighted_abo_ft_step170k
+
+# 写回 metadata（如果你 build_metadata 的数据集 key 不是 Toys4k，请替换）
+python dataset_toolkits/build_metadata.py Toys4k --output_dir "${TEST_OUTPUT_DIR}"
+
+
+# ---------------------------------------------------------
+# C. 用 ABO finetuned decoder 解码
+# ---------------------------------------------------------
+python my_scripts/decode_latents_to_gaussian.py \
+  --output_dir "${TEST_OUTPUT_DIR}" \
+  --latent_model dinov2_vitl14_reg_vis_weighted_abo_ft_step170k \
+  --dec_ckpt_path "${DEC_CKPT}" \
+  --dec_model_dir "${TRELLIS_ROOT}/outputs/finetune_vis_abo" \
+  --save_dir gaussians_decoded_vis_weighted_abo_ft_step170k
+
+
+# ---------------------------------------------------------
+# D. 评估
+# ---------------------------------------------------------
+python my_scripts/eval_render_metrics.py \
+  --output_dir "${TEST_OUTPUT_DIR}" \
+  --gauss_dir "${TEST_OUTPUT_DIR}/gaussians_decoded_vis_weighted_abo_ft_step170k" \
+  --resolution 512 \
+  --bg 0,0,0
