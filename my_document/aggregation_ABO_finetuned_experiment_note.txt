@@ -52,3 +52,10 @@ python my_scripts/eval_render_metrics.py \
   --gauss_dir "/nfs/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small/gaussians_decoded_vis_weighted_abo_ft_step170k" \
   --resolution 512 \
   --bg 0,0,0
+
+
+# =========================================================
+# E. 330k checkpoint + Toys4k_small 一键命令
+# =========================================================
+# 在仓库根目录下直接执行：
+#   bash my_scripts/run_eval_abo_0330000_toy.sh
