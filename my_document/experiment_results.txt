@@ -1,5 +1,4 @@
 ////vallina mean baseline
-toy:
 === Aggregate ===
 time: 16.5 + 15:19 + 17:5 +11:53
 N objects: 3229
@@ -8,7 +7,6 @@ SSIM : 0.9425
 LPIPS: 0.0651
 
 ////visibility aware weighted average
-toy:
 === Aggregate ===
 time: 16:54 + 19:05 + 19:01 + 18:37
 N objects: 3229
@@ -17,22 +15,16 @@ SSIM : 0.9412
 LPIPS: 0.0656
 
 ////encoder trained only
-toy:
-////visibility aware weighted average
-N objects: 3229
-PSNR : 14.5111
-SSIM : 0.7075
-LPIPS: 0.3627
 
-////enc + dec trained on ABO 170000 steps
-N objects: 3229
-PSNR : 24.3341
-SSIM : 0.9255
-LPIPS: 0.1052
-
-////enc + dec trained on ABO 330000 steps
-N objects: 3229
-PSNR : 24.5038
-SSIM : 0.9266
-LPIPS: 0.1006
+  //enc + dec trained on ABO 170000 steps
+  N objects: 3229
+  PSNR : 24.3341
+  SSIM : 0.9255
+  LPIPS: 0.1052
+  
+  //enc + dec trained on ABO 330000 steps
+  N objects: 3229
+  PSNR : 24.5038
+  SSIM : 0.9266
+  LPIPS: 0.1006
 
