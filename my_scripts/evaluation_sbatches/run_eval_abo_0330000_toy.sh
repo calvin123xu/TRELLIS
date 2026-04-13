@@ -60,9 +60,7 @@ python dataset_toolkits/encode_latent.py \
   --model_root "${ROOT}/outputs" \
   --latent_subdir "${LATENT_SUBDIR}"
 
-printf '\n[3/4] Building metadata and decoding gaussians...\n'
-python dataset_toolkits/build_metadata.py Toys4k --output_dir "${DATASET}"
-
+printf '\n[3/4] decoding gaussians...\n'
 python my_scripts/decode_latents_to_gaussian.py \
   --output_dir "${DATASET}" \
   --latent_model "${LATENT_SUBDIR}" \
