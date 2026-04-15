@@ -14,17 +14,23 @@ PSNR : 27.6370
 SSIM : 0.9412
 LPIPS: 0.0656
 
-////encoder trained only
+////training results
 
-  //enc + dec trained on ABO 170000 steps
+  //enc + dec vis trained on ABO 170000 steps
   N objects: 3229
   PSNR : 24.3341
   SSIM : 0.9255
   LPIPS: 0.1052
   
-  //enc + dec trained on ABO 330000 steps
+  //enc + dec vis trained on ABO 330000 steps
   N objects: 3229
   PSNR : 24.5038
   SSIM : 0.9266
   LPIPS: 0.1006
+
+  //enc + dec baseline mean trained on ABO 170000 steps
+  N objects: 3229
+  PSNR : 24.0591
+  SSIM : 0.9217
+  LPIPS: 0.1128
 
