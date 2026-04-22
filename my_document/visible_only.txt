@@ -1,0 +1,20 @@
+I am implementing multiview voxel feature aggregation.
+
+Baseline aggregation:
+f_i = (1 / N_i) * sum_v f_iv
+
+Visible-only aggregation:
+f_i = sum_v (m_iv * f_iv) / (sum_v m_iv + eps)
+
+Definitions:
+- f_iv: feature from view v projected onto voxel i
+- N_i: number of contributing views for voxel i
+- m_iv: visibility mask for voxel i from view v, typically 0 or 1
+- eps: small constant to avoid division by zero
+
+I want unit tests for my implementation.
+Please:
+1. infer the tensor shapes from the code in this file
+2. include small hand-computed examples
+3. verify baseline and visible-only outputs against manual expected values
+4. explain any assumptions you make about tensor dimensions

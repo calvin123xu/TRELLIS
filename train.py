@@ -56,6 +56,29 @@ def get_model_summary(model):
     return model_summary
 
 
+def freeze_selected_models(model_dict, freeze_models):
+    if freeze_models is None:
+        return
+    if isinstance(freeze_models, str):
+        freeze_models = [m.strip() for m in freeze_models.split(',') if m.strip()]
+    if not isinstance(freeze_models, (list, tuple)):
+        raise ValueError(f'freeze_models must be a list/tuple/string, got {type(freeze_models)}')
+
+    for model_name in freeze_models:
+        if model_name not in model_dict:
+            raise ValueError(f'freeze_models contains unknown model: {model_name}')
+        model = model_dict[model_name]
+        for param in model.parameters():
+            param.requires_grad = False
+        model.eval()
+
+    num_trainable = sum(
+        p.numel() for m in model_dict.values() for p in m.parameters() if p.requires_grad
+    )
+    if num_trainable == 0:
+        raise ValueError('No trainable parameters remain after applying freeze_models.')
+
+
 def main(local_rank, cfg):
     # Set up distributed training
     rank = cfg.node_rank * cfg.num_gpus + local_rank
@@ -74,6 +97,9 @@ def main(local_rank, cfg):
         name: getattr(models, model.name)(**model.args).cuda()
         for name, model in cfg.models.items()
     }
+
+    # Optional selective freezing (e.g., encoder-only fine-tune with frozen decoder).
+    freeze_selected_models(model_dict, cfg.freeze_models if hasattr(cfg, 'freeze_models') else None)
 
     # Model summary
     if rank == 0:

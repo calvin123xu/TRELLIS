@@ -16,6 +16,20 @@ from ..utils.general_utils import *
 from ..utils.data_utils import recursive_to_device, cycle, ResumableSampler
 
 
+def _json_default(value):
+    """Convert common tensor/NumPy values to JSON-serializable Python types."""
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if torch.is_tensor(value):
+        value = value.detach()
+        if value.numel() == 1:
+            return value.item()
+        return value.cpu().tolist()
+    return str(value)
+
+
 class Trainer:
     """
     Base class for training.
@@ -131,6 +145,12 @@ class Trainer:
         """
         Prepare dataloader.
         """
+        default_workers = int(np.ceil(os.cpu_count() / torch.cuda.device_count()))
+        slurm_cpus = int(os.environ.get('SLURM_CPUS_PER_TASK', default_workers))
+        num_workers = int(kwargs.get('num_workers', min(default_workers, slurm_cpus)))
+        num_workers = max(0, num_workers)
+        persistent_workers = bool(kwargs.get('persistent_workers', num_workers > 0))
+
         self.data_sampler = ResumableSampler(
             self.dataset,
             shuffle=True,
@@ -138,10 +158,10 @@ class Trainer:
         self.dataloader = DataLoader(
             self.dataset,
             batch_size=self.batch_size_per_gpu,
-            num_workers=int(np.ceil(os.cpu_count() / torch.cuda.device_count())),
+            num_workers=num_workers,
             pin_memory=True,
             drop_last=True,
-            persistent_workers=True,
+            persistent_workers=persistent_workers and num_workers > 0,
             collate_fn=self.dataset.collate_fn if hasattr(self.dataset, 'collate_fn') else None,
             sampler=self.data_sampler,
         )
@@ -413,7 +433,7 @@ class Trainer:
                 if self.step % self.i_log == 0:
                     ## save to log file
                     log_str = '\n'.join([
-                        f'{step}: {json.dumps(log)}' for step, log in log
+                        f'{step}: {json.dumps(log, default=_json_default)}' for step, log in log
                     ])
                     with open(os.path.join(self.output_dir, 'log.txt'), 'a') as log_file:
                         log_file.write(log_str + '\n')

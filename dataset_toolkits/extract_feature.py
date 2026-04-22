@@ -1,208 +1,102 @@
-import os
-import copy
-import sys
-import json
-import importlib
 import argparse
-import torch
-import torch.nn.functional as F
-import numpy as np
-import pandas as pd
-import utils3d
-from tqdm import tqdm
-from easydict import EasyDict as edict
-from concurrent.futures import ThreadPoolExecutor
-from queue import Queue
-from torchvision import transforms
-from PIL import Image
-from aggregation_utils import aggregate_patchtokens
+import os
+import subprocess
+import sys
 
 
-torch.set_grad_enabled(False)
+def _append_optional_arg(cmd, name, value):
+    if value is None:
+        return
+    cmd.extend([name, str(value)])
 
-
-def get_data(frames, sha256):
-    with ThreadPoolExecutor(max_workers=16) as executor:
-        def worker(view):
-            image_path = os.path.join(opt.output_dir, 'renders', sha256, view['file_path'])
-            try:
-                image = Image.open(image_path)
-            except:
-                print(f"Error loading image {image_path}")
-                return None
-            image = image.resize((518, 518), Image.Resampling.LANCZOS)
-            image = np.array(image).astype(np.float32) / 255
-            image = image[:, :, :3] * image[:, :, 3:]
-            image = torch.from_numpy(image).permute(2, 0, 1).float()
-
-            c2w = torch.tensor(view['transform_matrix'])
-            c2w[:3, 1:3] *= -1
-            extrinsics = torch.inverse(c2w)
-            fov = view['camera_angle_x']
-            intrinsics = utils3d.torch.intrinsics_from_fov_xy(torch.tensor(fov), torch.tensor(fov))
-
-            return {
-                'image': image,
-                'extrinsics': extrinsics,
-                'intrinsics': intrinsics
-            }
-        
-        datas = executor.map(worker, frames)
-        for data in datas:
-            if data is not None:
-                yield data
-                
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description='Compatibility wrapper: stage1 extract view features, stage2 aggregate voxel features.'
+    )
     parser.add_argument('--output_dir', type=str, required=True,
-                        help='Directory to save the metadata')
+                        help='Directory containing metadata/renders/voxels and where outputs are saved.')
     parser.add_argument('--filter_low_aesthetic_score', type=float, default=None,
-                        help='Filter objects with aesthetic score lower than this value')
+                        help='Filter objects with aesthetic score lower than this value.')
     parser.add_argument('--model', type=str, default='dinov2_vitl14_reg',
-                        help='Feature extraction model')
+                        help='Feature extraction model.')
     parser.add_argument('--instances', type=str, default=None,
-                        help='Instances to process')
+                        help='Path to file with one sha256 per line.')
     parser.add_argument('--batch_size', type=int, default=16)
-    parser.add_argument('--aggregation_mode', type=str, default='visible_only', choices=['visible_only', 'mean'],
-                        help='Multiview feature aggregation mode. "visible_only" is the default behavior.')
+    parser.add_argument('--aggregation_mode', type=str, default='visible_only', choices=['visible_only', 'visible_only_zbuf', 'mean'],
+                        help='Aggregation mode used by aggregate_features.py.')
     parser.add_argument('--visibility_eps', type=float, default=1e-6,
-                        help='Small constant used in visible-only denominator to avoid division by zero.')
+                        help='Numerical epsilon for visible_only aggregation denominator.')
     parser.add_argument('--visibility_margin', type=float, default=0.0,
-                        help='Optional in-bound margin (in normalized grid coordinates) used for visibility mask.')
+                        help='In-bound margin in normalized grid coordinates for visibility mask.')
+    parser.add_argument('--zbuf_depth_tolerance', type=float, default=1e-3,
+                        help='Depth tolerance for visible_only_zbuf mode in camera-space depth units.')
+    parser.add_argument('--zbuf_selection', type=str, default='nearest', choices=['nearest', 'topk', 'soft'],
+                        help='Cell-level z-buffer policy for visible_only_zbuf mode.')
+    parser.add_argument('--zbuf_topk', type=int, default=1,
+                        help='Top-k nearest depths kept per patch cell when zbuf_selection=topk.')
+    parser.add_argument('--zbuf_soft_tau', type=float, default=5e-3,
+                        help='Depth decay scale for zbuf_selection=soft. Larger values are less aggressive.')
+    parser.add_argument('--zbuf_fallback_mode', type=str, default='none', choices=['none', 'visible_only'],
+                        help='Optional fallback policy for low-support voxels in visible_only_zbuf mode.')
+    parser.add_argument('--zbuf_min_visibility_count', type=float, default=0.0,
+                        help='If fallback enabled, voxels below this zbuf support use visible_only fallback.')
+    parser.add_argument('--timing_log_interval', type=int, default=100,
+                        help='Print timing summary every N processed objects in each stage.')
     parser.add_argument('--rank', type=int, default=0)
     parser.add_argument('--world_size', type=int, default=1)
+    parser.add_argument('--skip_view_extraction', action='store_true',
+                        help='Skip stage1 and aggregate from precomputed view_features only.')
+    parser.add_argument('--output_feature_name', type=str, default=None,
+                        help='Output feature directory under features/. Default: model name.')
     opt = parser.parse_args()
-    opt = edict(vars(opt))
 
-    feature_name = opt.model
-    os.makedirs(os.path.join(opt.output_dir, 'features', feature_name), exist_ok=True)
+    if opt.output_feature_name is None:
+        if opt.aggregation_mode == 'visible_only':
+            opt.output_feature_name = f'{opt.model}_visible_only'
+        elif opt.aggregation_mode == 'visible_only_zbuf':
+            opt.output_feature_name = f'{opt.model}_visible_zbuf'
+        else:
+            opt.output_feature_name = opt.model
 
-    # load model
-    dinov2_model = torch.hub.load('facebookresearch/dinov2', opt.model)
-    dinov2_model.eval().cuda()
-    transform = transforms.Compose([
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-    n_patch = 518 // 14
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    extract_view_script = os.path.join(script_dir, 'extract_view_features.py')
+    aggregate_script = os.path.join(script_dir, 'aggregate_features.py')
 
-    # get file list
-    if os.path.exists(os.path.join(opt.output_dir, 'metadata.csv')):
-        metadata = pd.read_csv(os.path.join(opt.output_dir, 'metadata.csv'))
+    common_args = [
+        '--output_dir', opt.output_dir,
+        '--model', opt.model,
+        '--batch_size', str(opt.batch_size),
+        '--rank', str(opt.rank),
+        '--world_size', str(opt.world_size),
+        '--timing_log_interval', str(opt.timing_log_interval),
+    ]
+
+    _append_optional_arg(common_args, '--filter_low_aesthetic_score', opt.filter_low_aesthetic_score)
+    _append_optional_arg(common_args, '--instances', opt.instances)
+
+    if not opt.skip_view_extraction:
+        extract_cmd = [sys.executable, extract_view_script] + common_args
+        print('[PIPELINE] Running stage1 extract_view_features.py')
+        subprocess.run(extract_cmd, check=True)
     else:
-        raise ValueError('metadata.csv not found')
-    if opt.instances is not None:
-        with open(opt.instances, 'r') as f:
-            instances = f.read().splitlines()
-        metadata = metadata[metadata['sha256'].isin(instances)]
-    else:
-        if opt.filter_low_aesthetic_score is not None:
-            metadata = metadata[metadata['aesthetic_score'] >= opt.filter_low_aesthetic_score]
-        if f'feature_{feature_name}' in metadata.columns:
-            metadata = metadata[metadata[f'feature_{feature_name}'] == False]
-        metadata = metadata[metadata['voxelized'] == True]
-        metadata = metadata[metadata['rendered'] == True]
+        print('[PIPELINE] Skipping stage1 (extract_view_features.py).')
 
-    start = len(metadata) * opt.rank // opt.world_size
-    end = len(metadata) * (opt.rank + 1) // opt.world_size
-    metadata = metadata[start:end]
-    records = []
+    aggregate_cmd = [
+        sys.executable,
+        aggregate_script,
+        '--aggregation_mode', opt.aggregation_mode,
+        '--visibility_eps', str(opt.visibility_eps),
+        '--visibility_margin', str(opt.visibility_margin),
+        '--zbuf_depth_tolerance', str(opt.zbuf_depth_tolerance),
+        '--zbuf_selection', opt.zbuf_selection,
+        '--zbuf_topk', str(opt.zbuf_topk),
+        '--zbuf_soft_tau', str(opt.zbuf_soft_tau),
+        '--zbuf_fallback_mode', opt.zbuf_fallback_mode,
+        '--zbuf_min_visibility_count', str(opt.zbuf_min_visibility_count),
+        '--output_feature_name', opt.output_feature_name,
+    ] + common_args
 
-    # filter out objects that are already processed
-    sha256s = list(metadata['sha256'].values)
-    for sha256 in copy.copy(sha256s):
-        if os.path.exists(os.path.join(opt.output_dir, 'features', feature_name, f'{sha256}.npz')):
-            records.append({'sha256': sha256, f'feature_{feature_name}' : True})
-            sha256s.remove(sha256)
-
-    # extract features
-    load_queue = Queue(maxsize=4)
-    try:
-        with ThreadPoolExecutor(max_workers=8) as loader_executor, \
-            ThreadPoolExecutor(max_workers=8) as saver_executor:
-            def loader(sha256):
-                try:
-                    with open(os.path.join(opt.output_dir, 'renders', sha256, 'transforms.json'), 'r') as f:
-                        metadata = json.load(f)
-                    frames = metadata['frames']
-                    data = []
-                    for datum in get_data(frames, sha256):
-                        datum['image'] = transform(datum['image'])
-                        data.append(datum)
-                    positions = utils3d.io.read_ply(os.path.join(opt.output_dir, 'voxels', f'{sha256}.ply'))[0]
-                    load_queue.put((sha256, data, positions))
-                except Exception as e:
-                    print(f"Error loading data for {sha256}: {e}")
-
-            loader_executor.map(loader, sha256s)
-            
-            def saver(sha256, pack, patchtokens, uv, visibility_mask):
-                sampled_patchtokens = F.grid_sample(
-                    patchtokens,
-                    uv.unsqueeze(1),
-                    mode='bilinear',
-                    align_corners=False,
-                ).squeeze(2).permute(0, 2, 1).cpu().numpy()
-                visibility_mask = visibility_mask.cpu().numpy()
-                pack['patchtokens'] = aggregate_patchtokens(
-                    sampled_patchtokens,
-                    aggregation_mode=opt.aggregation_mode,
-                    visibility_mask=visibility_mask,
-                    eps=opt.visibility_eps,
-                ).astype(np.float16)
-                save_path = os.path.join(opt.output_dir, 'features', feature_name, f'{sha256}.npz')
-                np.savez_compressed(save_path, **pack)
-                records.append({'sha256': sha256, f'feature_{feature_name}' : True})
-                
-            for _ in tqdm(range(len(sha256s)), desc="Extracting features"):
-                sha256, data, positions = load_queue.get()
-                positions = torch.from_numpy(positions).float().cuda()
-                indices = ((positions + 0.5) * 64).long()
-                assert torch.all(indices >= 0) and torch.all(indices < 64), "Some vertices are out of bounds"
-                n_views = len(data)
-                N = positions.shape[0]
-                pack = {
-                    'indices': indices.cpu().numpy().astype(np.uint8),
-                }
-                patchtokens_lst = []
-                uv_lst = []
-                visibility_mask_lst = []
-                positions_h = torch.cat([
-                    positions,
-                    torch.ones(positions.shape[0], 1, device=positions.device, dtype=positions.dtype),
-                ], dim=1)
-                for i in range(0, n_views, opt.batch_size):
-                    batch_data = data[i:i+opt.batch_size]
-                    bs = len(batch_data)
-                    batch_images = torch.stack([d['image'] for d in batch_data]).cuda()
-                    batch_extrinsics = torch.stack([d['extrinsics'] for d in batch_data]).cuda()
-                    batch_intrinsics = torch.stack([d['intrinsics'] for d in batch_data]).cuda()
-                    features = dinov2_model(batch_images, is_training=True)
-                    uv = utils3d.torch.project_cv(positions, batch_extrinsics, batch_intrinsics)[0] * 2 - 1
-                    cam_space = torch.matmul(batch_extrinsics, positions_h.t()).transpose(1, 2)
-                    depth = cam_space[..., 2]
-                    in_bounds = (
-                        (uv[..., 0] >= (-1.0 + opt.visibility_margin)) &
-                        (uv[..., 0] <= (1.0 - opt.visibility_margin)) &
-                        (uv[..., 1] >= (-1.0 + opt.visibility_margin)) &
-                        (uv[..., 1] <= (1.0 - opt.visibility_margin))
-                    )
-                    visibility_mask = (depth > 0) & in_bounds
-                    patchtokens = features['x_prenorm'][:, dinov2_model.num_register_tokens + 1:].permute(0, 2, 1).reshape(bs, 1024, n_patch, n_patch)
-                    patchtokens_lst.append(patchtokens)
-                    uv_lst.append(uv)
-                    visibility_mask_lst.append(visibility_mask)
-                patchtokens = torch.cat(patchtokens_lst, dim=0)
-                uv = torch.cat(uv_lst, dim=0)
-                visibility_mask = torch.cat(visibility_mask_lst, dim=0)
-
-                # save features
-                saver_executor.submit(saver, sha256, pack, patchtokens, uv, visibility_mask)
-                
-            saver_executor.shutdown(wait=True)
-    except:
-        print("Error happened during processing.")
-        
-    records = pd.DataFrame.from_records(records)
-    records.to_csv(os.path.join(opt.output_dir, f'feature_{feature_name}_{opt.rank}.csv'), index=False)
+    print('[PIPELINE] Running stage2 aggregate_features.py')
+    subprocess.run(aggregate_cmd, check=True)
         

@@ -1,0 +1,18 @@
+1.Stream aggregation per batch instead of collecting all views then concatenating.
+Expected: lower peak GPU memory, better throughput, same math.
+2.Keep aggregation on GPU and only transfer final [N, C] once.
+Expected: less CPU-GPU transfer overhead.
+3.Move grid_sample out of threadpool saver and do only file I/O in saver threads.
+Expected: more stable GPU utilization.
+4.Add true occlusion-aware visibility (z-buffer style per view).
+Expected: best quality gain vs current mask heuristic.
+5.Add zero-visible fallback policy (for example nearest-view or mean fallback) as an option.
+Expected: better robustness on sparse/hard views.
+
+
+Fastest low-risk improvement: encoder-only fine-tune.
+Best ultimate quality: encoder+decoder co-adaptation.
+
+
+workload/ experiment setup
+datasets
