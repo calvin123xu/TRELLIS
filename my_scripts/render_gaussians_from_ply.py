@@ -1,6 +1,10 @@
+import os
 import argparse
 import sys
 from pathlib import Path
+
+os.environ.setdefault("ATTN_BACKEND", "xformers")
+os.environ.setdefault("SPARSE_ATTN_BACKEND", "xformers")
 
 try:
     from trellis.representations import Gaussian
