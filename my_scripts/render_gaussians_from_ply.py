@@ -1,8 +1,17 @@
 import argparse
+import sys
 from pathlib import Path
 
-from trellis.representations import Gaussian
-from trellis.utils import render_utils
+try:
+    from trellis.representations import Gaussian
+    from trellis.utils import render_utils
+except ModuleNotFoundError:
+    # Allow running this script directly without installing TRELLIS as a package.
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    from trellis.representations import Gaussian
+    from trellis.utils import render_utils
 
 
 def parse_args() -> argparse.Namespace:
