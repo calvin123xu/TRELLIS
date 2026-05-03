@@ -13,7 +13,6 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=x_qiaoyu@speed.encs.concordia.ca
 
-
 set -euo pipefail
 
 echo "HOST: $(hostname)"
@@ -27,6 +26,23 @@ conda activate /speed-scratch/qiaoyu/env/trellis
 # Cache (bash version)
 source /speed-scratch/qiaoyu/speed-hpc/temp_cache_bash.sh
 
+# Job-local temp directory
+# Put Python multiprocessing / DataLoader temp files outside shared NFS-style locations.
+JOB_TMPDIR="/nfs/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/tmp/trellis_${SLURM_JOB_ID}"
+mkdir -p "$JOB_TMPDIR"
+
+export TMPDIR="$JOB_TMPDIR"
+export TMP="$JOB_TMPDIR"
+export TEMP="$JOB_TMPDIR"
+
+echo "TMPDIR: $TMPDIR"
+
+cleanup_tmpdir() {
+    echo "Cleaning TMPDIR: $JOB_TMPDIR"
+    rm -rf "$JOB_TMPDIR" 2>/dev/null || true
+}
+trap cleanup_tmpdir EXIT
+
 # Runtime env for stable backend/memory behavior
 export ATTN_BACKEND=xformers
 export SPARSE_ATTN_BACKEND=xformers
@@ -35,6 +51,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Run
 cd /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS
+
 python train.py \
   --config configs/vae/slat_vae_enc_dec_gs_swin8_B_64l8_fp16_vis_weighted_finetune.json \
   --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_abo_original_config \
