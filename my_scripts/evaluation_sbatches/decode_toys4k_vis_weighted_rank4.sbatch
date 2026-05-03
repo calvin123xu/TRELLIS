@@ -67,7 +67,7 @@ python --version
 
 # Dataset / latent variables
 OUTPUT_DIR="/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small"
-LATENT_MODEL="dinov2_vitl14_reg_vis_weighted_slat_enc_swin8_B_64l8_fp16"
+LATENT_MODEL="dinov2_vitl14_reg_vis_weighted_abo_ft_original_config_step80k"
 
 # Decoder checkpoint variables
 DEC_MODEL_DIR="/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_abo_original_config"
