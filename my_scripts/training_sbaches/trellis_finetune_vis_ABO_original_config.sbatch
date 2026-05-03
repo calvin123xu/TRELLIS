@@ -54,8 +54,8 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 cd /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS
 
 python train.py \
-  --config configs/vae/slat_vae_enc_dec_gs_swin8_B_64l8_fp16_vis_weighted_finetune.json \
-  --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_abo_original_config \
+  --config configs/vae/slat_vae_enc_dec_gs_swin8_B_64l8_fp16_vis_weighted_finetune_20g.json \
+  --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_weighted_abo \
   --data_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/ABO \
   --ckpt none \
   --num_gpus 1 \
