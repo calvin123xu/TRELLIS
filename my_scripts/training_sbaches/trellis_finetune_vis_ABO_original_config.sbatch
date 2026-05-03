@@ -28,7 +28,7 @@ source /speed-scratch/qiaoyu/speed-hpc/temp_cache_bash.sh
 
 # Job-local temp directory
 # Put Python multiprocessing / DataLoader temp files outside shared NFS-style locations.
-JOB_TMPDIR="/nfs/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/tmp/trellis_${SLURM_JOB_ID}"
+JOB_TMPDIR="/tmp/${USER}/trellis_${SLURM_JOB_ID}"
 mkdir -p "$JOB_TMPDIR"
 
 export TMPDIR="$JOB_TMPDIR"
