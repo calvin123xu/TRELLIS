@@ -57,7 +57,6 @@ python train.py \
   --config configs/vae/slat_vae_enc_dec_gs_swin8_B_64l8_fp16_vis_weighted_finetune_20g.json \
   --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_weighted_abo \
   --data_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/ABO \
-  --ckpt none \
   --num_gpus 1 \
   --auto_retry 0
 
