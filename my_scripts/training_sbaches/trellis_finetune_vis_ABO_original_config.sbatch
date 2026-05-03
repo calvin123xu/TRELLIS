@@ -36,6 +36,7 @@ export TMP="$JOB_TMPDIR"
 export TEMP="$JOB_TMPDIR"
 
 echo "TMPDIR: $TMPDIR"
+df -h "$TMPDIR" || true
 
 cleanup_tmpdir() {
     echo "Cleaning TMPDIR: $JOB_TMPDIR"
