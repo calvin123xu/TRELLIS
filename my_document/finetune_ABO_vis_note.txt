@@ -29,8 +29,7 @@ python dataset_toolkits/encode_latent.py \
   --model_root "/nfs/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs" \
   --latent_subdir dinov2_vitl14_reg_vis_weighted_abo_ft_step170k
 
-# 写回 metadata（如果你 build_metadata 的数据集 key 不是 Toys4k，请替换）
-python dataset_toolkits/build_metadata.py Toys4k --output_dir "/nfs/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small"
+
 
 
 # ---------------------------------------------------------
@@ -54,8 +53,4 @@ python my_scripts/eval_render_metrics.py \
   --bg 0,0,0
 
 
-# =========================================================
-# E. 330k checkpoint + Toys4k_small 一键命令
-# =========================================================
-# 在仓库根目录下直接执行：
-#   bash my_scripts/run_eval_abo_0330000_toy.sh
+
