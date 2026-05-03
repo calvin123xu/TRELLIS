@@ -2,12 +2,12 @@
 #SBATCH --job-name=trellis_vae_ft_ABO_visw
 #SBATCH --account=weiping
 #SBATCH --partition=pt
-#SBATCH --gres=gpu:nvidia_a100_7g.80gb:1
+#SBATCH --gpus=1
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=128G
-#SBATCH --time=24:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --output=trellis_vae_ft_ABO_visw_%j.out
 #SBATCH --error=trellis_vae_ft_ABO_visw_%j.err
 #SBATCH --mail-type=FAIL
@@ -53,11 +53,15 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # Run
 cd /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS
 
+RUN_TAG="visw_ft_$(date +%Y%m%d_%H%M%S)"
+TRAIN_OUTPUT_DIR="/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_weighted_abo/${RUN_TAG}"
+
 python train.py \
   --config configs/vae/slat_vae_enc_dec_gs_swin8_B_64l8_fp16_vis_weighted_finetune_20g.json \
-  --output_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_weighted_abo \
+  --output_dir "${TRAIN_OUTPUT_DIR}" \
   --data_dir /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/ABO \
   --num_gpus 1 \
+  --ckpt none
   --auto_retry 0
 
 echo "END: $(date)"
