@@ -58,6 +58,12 @@ def main():
                              "<output_dir>. default: <output_dir>/gaussians_decoded")
     parser.add_argument("--max_items", type=int, default=-1,
                         help="decode at most N items; -1 means all")
+    parser.add_argument("--rank", "--RANK", dest="rank", type=int,
+                        default=int(os.environ.get("RANK", 0)),
+                        help="current worker rank (default: env RANK or 0)")
+    parser.add_argument("--world_size", "--WORLD_SIZE", dest="world_size", type=int,
+                        default=int(os.environ.get("WORLD_SIZE", 1)),
+                        help="total number of workers (default: env WORLD_SIZE or 1)")
     args = parser.parse_args()
 
     metadata_path = os.path.join(args.output_dir, "metadata.csv")
@@ -112,8 +118,17 @@ def main():
     if args.max_items > 0:
         sha_list = sha_list[:args.max_items]
 
+    if args.world_size <= 0:
+        raise ValueError(f"world_size must be > 0, got {args.world_size}")
+    if args.rank < 0 or args.rank >= args.world_size:
+        raise ValueError(f"rank must be in [0, world_size), got rank={args.rank}, world_size={args.world_size}")
+
+    start = len(sha_list) * args.rank // args.world_size
+    end = len(sha_list) * (args.rank + 1) // args.world_size
+    sha_list = sha_list[start:end]
+
     if len(sha_list) == 0:
-        raise ValueError("No valid latent npz found to decode.")
+        raise ValueError("No valid latent npz found to decode for this rank.")
 
     if args.save_dir is None:
         save_dir = os.path.join(args.output_dir, "gaussians_decoded")
@@ -162,7 +177,7 @@ def main():
         out_ply = os.path.join(save_dir, f"{sha}.ply")
         gaussian.save_ply(out_ply)
 
-    print(f"Done. Saved {len(sha_list)} ply files to: {save_dir}")
+    print(f"Done. rank={args.rank}/{args.world_size} saved {len(sha_list)} ply files to: {save_dir}")
 
 
 if __name__ == "__main__":
