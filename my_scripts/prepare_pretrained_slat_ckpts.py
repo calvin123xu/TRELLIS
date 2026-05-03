@@ -8,7 +8,8 @@ os.environ["ATTN_BACKEND"] = "xformers"
 os.environ["SPARSE_ATTN_BACKEND"] = "xformers"
 os.environ["SPCONV_ALGO"] = "native"
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, REPO_ROOT)
 from trellis import models
 
 
