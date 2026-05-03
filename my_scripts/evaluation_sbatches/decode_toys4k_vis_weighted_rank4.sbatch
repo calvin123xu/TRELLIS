@@ -74,7 +74,8 @@ DEC_MODEL_DIR="/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_
 DEC_CKPT_PATH="${DEC_MODEL_DIR}/ckpts/decoder_ema0.9999_step0080000.pt"
 
 # Output Gaussian folder
-SAVE_DIR="gaussians_decoded_${LATENT_MODEL}_dec_ft_step80k"
+SAVE_DIR="gaussians_decoded_vis_weighted_abo_ft_original_config_step80k"
+
 
 WORLD_SIZE=4
 RANK="${SLURM_ARRAY_TASK_ID}"
