@@ -67,14 +67,14 @@ python --version
 
 # Dataset / latent variables
 OUTPUT_DIR="/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/datasets/Toys4k_small"
-LATENT_MODEL="dinov2_vitl14_reg_vis_weighted_abo_ft_original_config_step80k"
+LATENT_MODEL="dinov2_vitl14_reg_vis_weighted_abo_ft"
 
 # Decoder checkpoint variables
-DEC_MODEL_DIR="/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_abo_original_config"
-DEC_CKPT_PATH="${DEC_MODEL_DIR}/ckpts/decoder_ema0.9999_step0080000.pt"
+DEC_MODEL_DIR="/speed-scratch/qiaoyu/speed-hpc/project/TRELLIS/outputs/finetune_vis_weighted_abo/visw_ft_20260503_191609/"
+DEC_CKPT_PATH="${DEC_MODEL_DIR}/ckpts/decoder_ema0.9999_step0120000.pt"
 
 # Output Gaussian folder
-SAVE_DIR="gaussians_decoded_vis_weighted_abo_ft_original_config_step80k"
+SAVE_DIR="gaussians_decoded/gaussians_decoded_vis_weighted_abo_ft"
 
 
 WORLD_SIZE=4
