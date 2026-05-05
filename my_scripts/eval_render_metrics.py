@@ -126,6 +126,41 @@ def eval_one_object(sha, output_dir, gauss_dir, lpips_fn, resolution=512, bg=(0,
     }
 
 
+def parse_rank_args(args):
+    """Resolve distributed rank settings from CLI args or SLURM array env vars."""
+    num_ranks = args.num_ranks
+    if num_ranks is None:
+        num_ranks = int(os.environ.get("SLURM_ARRAY_TASK_COUNT", "1"))
+
+    rank = args.rank
+    if rank is None:
+        rank = int(os.environ.get("SLURM_ARRAY_TASK_ID", "0"))
+
+    if num_ranks < 1:
+        raise ValueError(f"num_ranks must be >= 1, got {num_ranks}")
+    if rank < 0 or rank >= num_ranks:
+        raise ValueError(f"rank must be in [0, {num_ranks}), got {rank}")
+
+    return rank, num_ranks
+
+
+def resolve_out_csv(output_dir, out_csv, rank, num_ranks):
+    """Return a rank-safe CSV path. Supports {rank} and {num_ranks} placeholders."""
+    if out_csv is None:
+        if num_ranks == 1:
+            return os.path.join(output_dir, "render_metrics.csv")
+        return os.path.join(output_dir, f"render_metrics_rank{rank:04d}_of_{num_ranks:04d}.csv")
+
+    if "{rank" in out_csv or "{num_ranks" in out_csv:
+        return out_csv.format(rank=rank, num_ranks=num_ranks)
+
+    if num_ranks == 1:
+        return out_csv
+
+    root, ext = os.path.splitext(out_csv)
+    return f"{root}_rank{rank:04d}_of_{num_ranks:04d}{ext or '.csv'}"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, required=True,
@@ -136,12 +171,23 @@ def main():
     parser.add_argument("--bg", type=str, default="0,0,0",
                         help="background color in 0-255, e.g. 0,0,0")
     parser.add_argument("--max_items", type=int, default=-1)
-    parser.add_argument("--out_csv", type=str, default=None)
+    parser.add_argument("--out_csv", type=str, default=None,
+                        help=(
+                            "CSV output path. In multi-rank mode, omit this for "
+                            "render_metrics_rankXXXX_of_YYYY.csv, or use placeholders "
+                            "like metrics_rank{rank}.csv. If no placeholder is used, "
+                            "a rank suffix is added automatically."
+                        ))
+    parser.add_argument("--rank", type=int, default=None,
+                        help="Rank id in [0, num_ranks). Defaults to SLURM_ARRAY_TASK_ID or 0.")
+    parser.add_argument("--num_ranks", type=int, default=None,
+                        help="Total ranks. Defaults to SLURM_ARRAY_TASK_COUNT or 1.")
     args = parser.parse_args()
 
+    rank, num_ranks = parse_rank_args(args)
     bg = tuple(int(x) for x in args.bg.split(","))
     gauss_dir = args.gauss_dir or os.path.join(args.output_dir, "gaussians_decoded")
-    out_csv = args.out_csv or os.path.join(args.output_dir, "render_metrics.csv")
+    out_csv = resolve_out_csv(args.output_dir, args.out_csv, rank, num_ranks)
 
     meta = pd.read_csv(os.path.join(args.output_dir, "metadata.csv"))
     # shas = meta["sha256"].astype(str).tolist()
@@ -168,17 +214,30 @@ def main():
     if args.max_items > 0:
         shas = shas[:args.max_items]
 
+    if num_ranks > 1:
+        shas = shas[rank::num_ranks]
+
+    print(f"[Eval] rank: {rank}/{num_ranks}")
+    print(f"[Eval] assets assigned to this rank: {len(shas)}")
+    print(f"[Eval] writing CSV: {out_csv}")
+
     lpips_fn = lpips.LPIPS(net="alex").cuda().eval()
-    
+
     rows = []
-    for sha in tqdm(shas, desc="Evaluating"):
+    for sha in tqdm(shas, desc=f"Evaluating rank {rank}/{num_ranks}"):
         # r = eval_one_object(sha, args.output_dir, gauss_dir,
         r = eval_one_object(sha, args.output_dir, gauss_dir, lpips_fn,
                             resolution=args.resolution, bg=bg)
         if r is not None:
             rows.append(r)
 
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows, columns=["sha256", "num_views", "psnr", "ssim", "lpips"])
+    df.insert(0, "rank", rank)
+    df.insert(1, "num_ranks", num_ranks)
+
+    out_dir = os.path.dirname(out_csv)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
     df.to_csv(out_csv, index=False)
 
     if len(df) > 0:
