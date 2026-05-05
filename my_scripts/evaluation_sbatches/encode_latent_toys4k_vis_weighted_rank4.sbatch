@@ -28,12 +28,19 @@ set -euo pipefail
 echo "HOST: $(hostname)"
 echo "START: $(date)"
 
+# Conda
 source /encs/pkg/anaconda3-2023.03/root/etc/profile.d/conda.sh
 conda activate /speed-scratch/qiaoyu/env/trellis
 
+# Cache (bash version)
 if [ -f /speed-scratch/qiaoyu/speed-hpc/temp_cache_bash.sh ]; then
     source /speed-scratch/qiaoyu/speed-hpc/temp_cache_bash.sh
 fi
+
+# Job-local temp directory
+# Put Python multiprocessing / DataLoader temp files outside shared NFS-style locations.
+JOB_TMPDIR="/tmp/${USER}/trellis_${SLURM_JOB_ID}"
+mkdir -p "$JOB_TMPDIR"
 
 cd /speed-scratch/qiaoyu/speed-hpc/project/TRELLIS
 
